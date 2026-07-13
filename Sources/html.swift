@@ -269,7 +269,7 @@ let htmlTemplate = #"""
   function route(){
     if(view==='home'){
       bar().innerHTML='<button class="nav l" title="Clipboard" onclick="showClips()">📋 Clipboard</button>'
-        +'<div class="mid">NAS · Notes</div><span class="spring"></span>'
+        +'<div class="mid">🍒 Cherry</div><span class="spring"></span>'
         +'<button class="plus" title="New note" onclick="addNote()">+</button>';
       appEl().className='';
       appEl().innerHTML = NOTES.length ? '<div class="list">'+NOTES.map(function(n,idx){

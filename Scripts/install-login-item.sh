@@ -1,7 +1,7 @@
 #!/bin/bash
-# Start NAS Notes automatically at login via a LaunchAgent.
+# Start Cherry automatically at login via a LaunchAgent.
 set -e
-APP="$HOME/Applications/NAS Notes.app"
+APP="$HOME/Applications/Cherry.app"
 PLIST="$HOME/Library/LaunchAgents/com.hico.nasnotes.plist"
 [ -d "$APP" ] || { echo "Build first: ./Scripts/build.sh"; exit 1; }
 
@@ -10,7 +10,7 @@ cat > "$PLIST" <<EOF
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0"><dict>
   <key>Label</key><string>com.hico.nasnotes</string>
-  <key>ProgramArguments</key><array><string>$APP/Contents/MacOS/NAS Notes</string></array>
+  <key>ProgramArguments</key><array><string>$APP/Contents/MacOS/Cherry</string></array>
   <key>RunAtLoad</key><true/>
   <key>KeepAlive</key><false/>
 </dict></plist>
@@ -18,4 +18,4 @@ EOF
 
 launchctl unload "$PLIST" 2>/dev/null || true
 launchctl load "$PLIST"
-echo "✓ NAS Notes will start at login (and is running now)."
+echo "✓ Cherry will start at login (and is running now)."

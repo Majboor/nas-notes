@@ -1,13 +1,13 @@
 <div align="center">
 
-# 🗒️ NAS Notes
+# 🍒 Cherry Note Taker
 
 **A super-light macOS menu-bar notes app — with a built-in smart clipboard manager.**
 
 Markdown notes, Spotlight launchers, CherryTree export, and a clipboard history that
 auto-sorts everything you copy — in ~300 lines of dependency-free Swift.
 
-![version](https://img.shields.io/badge/version-1.3.0-2563eb)
+![version](https://img.shields.io/badge/version-1.4.0-2563eb)
 ![platform](https://img.shields.io/badge/macOS-11%2B-lightgrey?logo=apple)
 ![Swift](https://img.shields.io/badge/Swift-5-f05138?logo=swift&logoColor=white)
 ![license](https://img.shields.io/badge/license-MIT-22c55e)
@@ -15,7 +15,7 @@ auto-sorts everything you copy — in ~300 lines of dependency-free Swift.
 
 <br>
 
-<img src="docs/img/demo.gif" width="440" alt="NAS Notes demo">
+<img src="docs/img/demo.gif" width="440" alt="Cherry demo">
 
 </div>
 
@@ -79,9 +79,9 @@ Plus:
 Requirements: macOS 11+, Xcode command-line tools (`swiftc`). CherryTree optional (`brew install cherrytree`).
 
 ```bash
-git clone https://github.com/Majboor/nas-notes.git
-cd nas-notes
-./Scripts/build.sh                # compiles + installs "~/Applications/NAS Notes.app"
+git clone https://github.com/Majboor/cherry-note-taker.git
+cd cherry-note-taker
+./Scripts/build.sh                # compiles + installs "~/Applications/Cherry.app"
 ./Scripts/install-login-item.sh   # (optional) start at login
 ```
 

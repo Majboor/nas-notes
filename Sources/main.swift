@@ -56,11 +56,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
             forEventClass: AEEventClass(kInternetEventClass), andEventID: AEEventID(kAEGetURL))
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         if let b = statusItem.button {
-            if let img = NSImage(systemSymbolName: "note.text", accessibilityDescription: "NAS notes") {
-                img.isTemplate = true; b.image = img
-                b.imagePosition = .imageLeading
-            }
-            b.title = " NAS"
+            b.title = "🍒 Cherry"
             b.target = self; b.action = #selector(toggle(_:))
         }
         let cfg = WKWebViewConfiguration()

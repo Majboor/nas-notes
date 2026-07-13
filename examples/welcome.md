@@ -1,6 +1,6 @@
 # Welcome
 
-This is a **NAS Notes** note — just a Markdown file in your notes folder
+This is a **Cherry** note — just a Markdown file in your notes folder
 (`$NAS_NOTES_DIR`, default `~/.rpidrive/notes`).
 
 ## How it works
