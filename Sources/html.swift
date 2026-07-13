@@ -65,6 +65,18 @@ let htmlTemplate = #"""
     padding:16px 18px;font:12.5px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;-webkit-app-region:no-drag}
   .hint{color:var(--muted);font-size:11px;padding:6px 18px;border-top:.5px solid var(--line);display:flex;align-items:center}
   .hint .del{margin-left:auto;color:var(--danger);cursor:pointer;font-weight:500}
+  .nminput{margin:14px 18px 2px;padding:9px 12px;border:.5px solid var(--line);border-radius:9px;
+    background:var(--code-bg);color:var(--ink);font-size:14px;font-weight:600;outline:none;-webkit-app-region:no-drag}
+  .nminput:focus{border-color:var(--accent)}
+  /* markdown formatting toolbar */
+  .mdbar{display:flex;align-items:center;gap:1px;padding:7px 12px;border-bottom:.5px solid var(--line);
+    overflow-x:auto;-webkit-app-region:no-drag}
+  .mdbar::-webkit-scrollbar{display:none}
+  .mdbar button{flex:0 0 auto;appearance:none;border:0;background:transparent;color:var(--ink);
+    min-width:30px;height:28px;border-radius:7px;font-size:13px;cursor:pointer;padding:0 8px;line-height:1}
+  .mdbar button:hover{background:var(--hover)}
+  .mdbar button b{font-weight:800} .mdbar button i{font-style:italic;font-family:Georgia,serif}
+  .mdbar .sep{width:1px;height:18px;background:var(--line);margin:0 5px;flex:0 0 auto}
 
   /* clipboard */
   .chips{display:flex;gap:6px;padding:8px 12px 6px;overflow-x:auto}
@@ -180,15 +192,61 @@ let htmlTemplate = #"""
   function goHome(){ view='home'; draft=null; route(); }
   function openNote(i){ active=i; view='note'; route(); }
   function openEdit(){ const n=cur(); draft={name:n.name, body:n.body, isNew:false}; view='edit'; route(); }
-  function addNote(){ draft={name:'', body:'# New note\n\n', isNew:true}; view='edit'; route(); }
+  function addNote(){ draft={name:'', body:'', isNew:true}; view='edit'; route(); }
   function cancelEdit(){ draft=null; view = (NOTES.length? (cur().name?'note':'home'):'home'); route(); }
   function saveEdit(){
-    const body=document.getElementById('ta').value; const title=titleOf(body);
+    let body=document.getElementById('ta').value;
     let name=draft.name;
-    if(draft.isNew){ name=uniqueSlug(title); NOTES.push({name:name,title:title,body:body}); active=NOTES.length-1; }
-    else { const i=NOTES.findIndex(x=>x.name===name); if(i>=0){ NOTES[i].body=body; NOTES[i].title=title; active=i; } }
+    if(draft.isNew){
+      const typed=((document.getElementById('nm')||{}).value||'').trim();
+      let title = typed || titleOf(body);
+      if(!title || title==='Untitled'){ alert('Give the note a name first.'); const nm=document.getElementById('nm'); if(nm) nm.focus(); return; }
+      // ensure the note opens with its name as an H1 title
+      if(!/^#{1,6}\s/.test(body.trim())){ body='# '+title+(body.trim()?'\n\n'+body:'\n\n'); }
+      name=uniqueSlug(title);
+      NOTES.push({name:name,title:titleOf(body),body:body}); active=NOTES.length-1;
+    } else {
+      const title=titleOf(body);
+      const i=NOTES.findIndex(x=>x.name===name); if(i>=0){ NOTES[i].body=body; NOTES[i].title=title; active=i; }
+    }
     send('save',{name:name, body:body});
     draft=null; view='note'; route();
+  }
+
+  // ---------- markdown formatting toolbar (for people who don't write Markdown) ----------
+  function taEl(){ return document.getElementById('ta'); }
+  function surround(before, after){
+    const ta=taEl(); if(!ta) return; const s=ta.selectionStart, e=ta.selectionEnd;
+    const sel=ta.value.slice(s,e);
+    ta.setRangeText(before+sel+after, s, e, 'end');
+    if(sel){ ta.selectionStart=s+before.length; ta.selectionEnd=s+before.length+sel.length; }
+    else { ta.selectionStart=ta.selectionEnd=s+before.length; }
+    ta.focus();
+  }
+  function linePrefix(prefix){
+    const ta=taEl(); if(!ta) return; const s=ta.selectionStart, e=ta.selectionEnd; const v=ta.value;
+    const ls=v.lastIndexOf('\n',s-1)+1; let le=v.indexOf('\n',e); if(le<0) le=v.length;
+    const block=v.slice(ls,le).split('\n').map(function(l){ return prefix+l; }).join('\n');
+    ta.setRangeText(block, ls, le, 'end'); ta.focus();
+  }
+  function mdLink(){
+    const ta=taEl(); if(!ta) return; const s=ta.selectionStart, e=ta.selectionEnd;
+    const sel=ta.value.slice(s,e)||'text';
+    ta.setRangeText('['+sel+'](url)', s, e, 'end');
+    const us=s+sel.length+3; ta.selectionStart=us; ta.selectionEnd=us+3; ta.focus();   // select "url" placeholder
+  }
+  function mdToolbar(){
+    return '<div class="mdbar">'
+     +'<button title="Heading" onclick="linePrefix(\'## \')">H</button>'
+     +'<button title="Bold (⌘B)" onclick="surround(\'**\',\'**\')"><b>B</b></button>'
+     +'<button title="Italic (⌘I)" onclick="surround(\'*\',\'*\')"><i>I</i></button>'
+     +'<span class="sep"></span>'
+     +'<button title="Bulleted list" onclick="linePrefix(\'- \')">&#8226;</button>'
+     +'<button title="Quote" onclick="linePrefix(\'> \')">&#10077;</button>'
+     +'<button title="Inline code" onclick="surround(\'`\',\'`\')">&lt;/&gt;</button>'
+     +'<span class="sep"></span>'
+     +'<button title="Link" onclick="mdLink()">&#128279;</button>'
+     +'</div>';
   }
   function delNote(){ const n=cur(); if(!confirm('Delete “'+n.title+'”? This removes the note and its Spotlight app.')) return;
     send('delete',{name:n.name}); NOTES.splice(active,1); active=0; draft=null; view='home'; route(); }
@@ -297,10 +355,22 @@ let htmlTemplate = #"""
         +'<div class="mid">'+(draft.isNew?'New Note':'Editing')+'</div>'
         +'<button class="nav r strong" onclick="saveEdit()">Save</button>';
       appEl().className='';
-      appEl().innerHTML='<div class="edit"><textarea id="ta" spellcheck="false"></textarea>'
-        +'<div class="hint">Markdown · first “# ” line becomes the title'
+      appEl().innerHTML='<div class="edit">'
+        +(draft.isNew?'<input id="nm" class="nminput" placeholder="Note name — e.g. Deploy steps" value="'+escHtml(draft.name||'')+'">':'')
+        +mdToolbar()
+        +'<textarea id="ta" spellcheck="false"></textarea>'
+        +'<div class="hint">Use the buttons, or type Markdown'
         +(draft.isNew?'':'<span class="del" onclick="delNote()">Delete note</span>')+'</div></div>';
-      const ta=document.getElementById('ta'); ta.value=draft.body; ta.focus();
+      const ta=document.getElementById('ta'); ta.value=draft.body;
+      ta.addEventListener('keydown',function(ev){
+        if((ev.metaKey||ev.ctrlKey)&&!ev.shiftKey&&!ev.altKey){
+          const k=(ev.key||'').toLowerCase();
+          if(k==='b'){ ev.preventDefault(); surround('**','**'); }
+          else if(k==='i'){ ev.preventDefault(); surround('*','*'); }
+        }
+      });
+      if(draft.isNew){ const nm=document.getElementById('nm'); if(nm) nm.focus(); else ta.focus(); }
+      else ta.focus();
       foot().innerHTML='';
     }
     else if(view==='clips'){
