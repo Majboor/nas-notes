@@ -1,0 +1,50 @@
+#!/bin/bash
+# Build one Spotlight-launchable app per note in $NAS_NOTES_DIR/*.md.
+# Each app opens nasnote://<base>, telling the running "NAS Notes" hub to focus that note.
+# Stale launchers (whose note was deleted) are pruned. Re-run after adding/removing notes.
+set -e
+NOTES="${NAS_NOTES_DIR:-$HOME/.rpidrive/notes}"
+APPS="$HOME/Applications"
+LSREG="/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister"
+
+cap(){ printf '%s' "$1" | awk '{print toupper(substr($0,1,1)) substr($0,2)}'; }
+
+# prune launchers whose note no longer exists (matched by our bundle id)
+for app in "$APPS"/*\ Handover.app; do
+  [ -e "$app" ] || continue
+  id=$(/usr/bin/defaults read "$app/Contents/Info" CFBundleIdentifier 2>/dev/null)
+  case "$id" in
+    com.hico.nasnote.*) base="${id#com.hico.nasnote.}"; [ -f "$NOTES/$base.md" ] || { rm -rf "$app"; echo "pruned: $(basename "$app")"; } ;;
+  esac
+done
+
+for md in "$NOTES"/*.md; do
+  [ -e "$md" ] || continue
+  base=$(basename "$md" .md)
+  title=$(grep -m1 '^# ' "$md" | sed 's/^# //' || true)
+  [ -z "$title" ] && title="$base"
+  disp="$(cap "$title") Handover"
+  app="$APPS/$disp.app"
+  rm -rf "$app"; mkdir -p "$app/Contents/MacOS"
+  cat > "$app/Contents/Info.plist" <<EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+  <key>CFBundleName</key><string>$disp</string>
+  <key>CFBundleDisplayName</key><string>$disp</string>
+  <key>CFBundleIdentifier</key><string>com.hico.nasnote.$base</string>
+  <key>CFBundleVersion</key><string>1.0</string>
+  <key>CFBundlePackageType</key><string>APPL</string>
+  <key>CFBundleExecutable</key><string>launch</string>
+  <key>LSUIElement</key><true/>
+  <key>LSMinimumSystemVersion</key><string>11.0</string>
+</dict></plist>
+EOF
+  printf '#!/bin/bash\nopen "nasnote://%s"\n' "$base" > "$app/Contents/MacOS/launch"
+  chmod +x "$app/Contents/MacOS/launch"
+  codesign --force -s - "$app" >/dev/null 2>&1 || true
+  "$LSREG" -f "$app" >/dev/null 2>&1 || true
+  echo "built: $disp.app  ->  nasnote://$base"
+done
+mdimport "$APPS" >/dev/null 2>&1 || true
+echo "done."
