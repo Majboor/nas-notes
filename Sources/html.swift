@@ -81,6 +81,13 @@ let htmlTemplate = #"""
     background:var(--code-bg);color:var(--muted);text-transform:uppercase;margin-bottom:5px}
   .badge.link{color:#0a72ff} .badge.code{color:#a855f7} .badge.path{color:#0ea5a5}
   .badge.image{color:#e0873a} .badge.video{color:#e0384e} .badge.file{color:#7d8797} .badge.text{color:#7d8797}
+  .badge.email{color:#0a72ff} .badge.phone{color:#22a06b} .badge.color{color:#e0873a} .badge.ip{color:#7c7cff} .badge.error{color:#e0384e}
+  .swatch{width:42px;height:42px;border-radius:9px;border:.5px solid var(--line);flex:0 0 auto}
+  .search{margin:2px 12px 4px;padding:7px 11px;border:.5px solid var(--line);border-radius:9px;
+    background:var(--code-bg);color:var(--ink);font-size:12.5px;outline:none}
+  .search:focus{border-color:var(--accent)}
+  .clip .star{color:var(--muted);font-size:14px;padding:0 3px;line-height:1.3;align-self:flex-start;cursor:pointer}
+  .clip .star.on{color:#f0a500}
   .prev{font-size:12.5px;color:var(--ink);white-space:pre-wrap;word-break:break-word;
     display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
   .prev.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;background:var(--code-bg);
@@ -92,6 +99,19 @@ let htmlTemplate = #"""
   .clip .x:hover{color:var(--danger)}
   .ficon{width:42px;height:42px;border-radius:9px;background:var(--code-bg);display:flex;align-items:center;justify-content:center;font-size:20px;flex:0 0 auto}
 
+  /* copy toast */
+  #toast{position:fixed;left:50%;bottom:16px;transform:translate(-50%,20px);opacity:0;pointer-events:none;
+    display:flex;align-items:center;gap:10px;max-width:82%;padding:9px 13px;border-radius:12px;
+    background:var(--panel);border:.5px solid var(--line);box-shadow:0 8px 26px rgba(0,0,0,.28);
+    transition:opacity .18s ease,transform .18s ease;z-index:50}
+  #toast.show{opacity:1;transform:translate(-50%,0)}
+  #toast .ticon{width:26px;height:26px;border-radius:6px;background:var(--code-bg);display:flex;align-items:center;
+    justify-content:center;font-size:14px;flex:0 0 auto;overflow:hidden}
+  #toast .ticon img.thumb{max-width:26px;max-height:26px;border:0;border-radius:5px}
+  #toast .ticon .swatch,#toast .ticon .ficon{width:26px;height:26px;border-radius:6px;font-size:14px}
+  #toast .tt{font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.3px}
+  #toast .ts{font-size:12px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:340px}
+
   footer{display:flex;align-items:center;gap:2px;padding:7px 10px 9px}
   .btn{appearance:none;border:0;background:transparent;color:var(--accent);
     padding:6px 9px;border-radius:7px;font-size:12.5px;font-weight:500;cursor:pointer}
@@ -101,6 +121,7 @@ let htmlTemplate = #"""
   <header id="bar"></header>
   <main id="app"></main>
   <footer id="foot"></footer>
+  <div id="toast"></div>
 </div>
 <script>
   const NOTES = /*__NOTES__*/;
@@ -109,6 +130,7 @@ let htmlTemplate = #"""
   let active = /*__ACTIVE__*/;
   let draft = null;
   let clipFilter = 'all';
+  let clipSearch = '';
 
   function cur(){ return NOTES[active] || {name:'',title:'',body:''}; }
   function send(action, extra){ try{ window.webkit.messageHandlers.bridge.postMessage(Object.assign({action:action}, extra||{})); }catch(e){} }
@@ -171,7 +193,8 @@ let htmlTemplate = #"""
 
   // ---------- clipboard ----------
   function showClips(){ view='clips'; route(); }
-  const KINDS=[['all','All'],['link','Links'],['code','Code'],['path','Paths'],['image','Images'],['video','Videos'],['file','Files'],['text','Text']];
+  const KINDS=[['fav','★'],['all','All'],['link','Links'],['email','Emails'],['code','Code'],['error','Errors'],
+    ['path','Paths'],['color','Colors'],['ip','IPs'],['phone','Phones'],['image','Images'],['video','Videos'],['file','Files'],['text','Text']];
   function twoDigit(n){ return (n<10?'0':'')+n; }
   function timeStr(ts){ const d=new Date(ts*1000); return twoDigit(d.getHours())+':'+twoDigit(d.getMinutes()); }
   function dayKey(ts){ const d=new Date(ts*1000); const n=new Date();
@@ -184,20 +207,61 @@ let htmlTemplate = #"""
   function clipInner(c){
     if(c.kind==='image'){ return (c.thumb?'<img class="thumb" src="'+c.thumb+'">':'<div class="ficon">🖼</div>'); }
     if(c.kind==='video'||c.kind==='file'){ return '<div class="ficon">'+icon(c.kind)+'</div>'; }
+    if(c.kind==='color'){ return '<div class="swatch" style="background:'+escHtml(c.preview||'#000')+'"></div>'; }
     return '';
   }
   function clipMain(c){
     let cls='prev', txt=escHtml(c.preview||'');
-    if(c.kind==='code'||c.kind==='path') cls='prev mono';
-    else if(c.kind==='link') cls='prev linkish';
+    if(c.kind==='code'||c.kind==='path'||c.kind==='error') cls='prev mono';
+    else if(c.kind==='link'||c.kind==='email') cls='prev linkish';
     let meta='';
     if(c.kind==='image'||c.kind==='video'||c.kind==='file'){ txt=escHtml(c.name||'file'); meta=escHtml(c.path||''); }
     else if(c.len&&c.len>1400){ meta=(c.len)+' chars'; }
     return '<span class="badge '+c.kind+'">'+escHtml(badgeText(c))+'</span>'
       +'<div class="'+cls+'">'+txt+'</div>'+(meta?'<div class="cmeta">'+meta+'</div>':'');
   }
-  function delClip(id,ev){ ev.stopPropagation(); send('clip-delete',{id:id}); CLIPS=CLIPS.filter(c=>c.id!==id); route(); }
+  function shortLabel(c){
+    if(c.kind==='image'||c.kind==='video'||c.kind==='file') return c.name||'file';
+    let s=(c.preview||'').replace(/\s+/g,' ').trim();
+    return s.length>60 ? s.slice(0,60)+'…' : s;
+  }
+  function copyClip(id){
+    const c=CLIPS.find(x=>x.id===id); if(!c) return;
+    send('clip-copy',{id:id});
+    showToast(clipInner(c), 'Now copied · '+badgeText(c), shortLabel(c));
+  }
+  let toastT=null;
+  function showToast(iconHtml, title, sub){
+    let t=document.getElementById('toast');
+    t.innerHTML='<div class="ticon">'+(iconHtml||'📋')+'</div><div class="tbody"><div class="tt">'
+      +escHtml(title)+'</div><div class="ts">'+escHtml(sub||'')+'</div></div>';
+    t.classList.add('show');
+    if(toastT) clearTimeout(toastT);
+    toastT=setTimeout(function(){ t.classList.remove('show'); }, 1900);
+  }
+  function toggleFav(id,ev){ ev.stopPropagation(); const c=CLIPS.find(x=>x.id===id); if(!c) return;
+    c.fav=!c.fav; send('clip-fav',{id:id,fav:!!c.fav}); renderClipList(); }
+  function delClip(id,ev){ ev.stopPropagation(); send('clip-delete',{id:id}); CLIPS=CLIPS.filter(c=>c.id!==id); renderClipList(); }
   function clearClips(){ if(!confirm('Clear all clipboard history?')) return; send('clip-clear'); CLIPS=[]; route(); }
+  function clipMatches(c){
+    const q=clipSearch.trim().toLowerCase(); if(!q) return true;
+    return ((c.preview||'')+' '+(c.name||'')+' '+(c.path||'')+' '+(c.lang||'')+' '+c.kind).toLowerCase().indexOf(q)>=0;
+  }
+  function renderClipList(){
+    const cont=document.getElementById('cliplist'); if(!cont) return;
+    const list=CLIPS.filter(c=>(clipFilter==='all'||(clipFilter==='fav'?c.fav:c.kind===clipFilter))&&clipMatches(c));
+    if(!list.length){ cont.innerHTML='<div class="empty">'+(clipSearch?'No matches.':'Nothing here yet.<br>Copy something and it shows up.')+'</div>'; return; }
+    let html='', lastDay='';
+    list.forEach(function(c){
+      const dk=dayKey(c.ts);
+      if(dk!==lastDay){ html+='<div class="daterow">'+escHtml(dk)+'</div>'; lastDay=dk; }
+      html+='<div class="clip" onclick="copyClip(\''+c.id+'\')">'
+        +clipInner(c)+'<div class="cbody">'+clipMain(c)+'<div class="cmeta">'+timeStr(c.ts)+'</div></div>'
+        +'<span class="star'+(c.fav?' on':'')+'" onclick="toggleFav(\''+c.id+'\',event)">'+(c.fav?'★':'☆')+'</span>'
+        +'<span class="x" onclick="delClip(\''+c.id+'\',event)">×</span></div>';
+    });
+    cont.innerHTML=html;
+  }
 
   function route(){
     if(view==='home'){
@@ -242,22 +306,15 @@ let htmlTemplate = #"""
         +'<button class="nav r mut" onclick="clearClips()">Clear</button>';
       appEl().className='';
       const present={}; CLIPS.forEach(c=>present[c.kind]=1);
-      const chips=KINDS.filter(k=>k[0]==='all'||present[k[0]]).map(function(k){
-        return '<div class="chip'+(clipFilter===k[0]?' active':'')+'" onclick="clipFilter=\''+k[0]+'\';route()">'+k[1]+'</div>'; }).join('');
-      const list=CLIPS.filter(c=>clipFilter==='all'||c.kind===clipFilter);
-      let html='<div class="chips">'+chips+'</div>';
-      if(!list.length){ html+='<div class="empty">Nothing here yet.<br>Copy something and it shows up.</div>'; }
-      else {
-        let lastDay='';
-        list.forEach(function(c){
-          const dk=dayKey(c.ts);
-          if(dk!==lastDay){ html+='<div class="daterow">'+escHtml(dk)+'</div>'; lastDay=dk; }
-          html+='<div class="clip" onclick="send(\'clip-copy\',{id:\''+c.id+'\'})">'
-            +clipInner(c)+'<div class="cbody">'+clipMain(c)+'<div class="cmeta">'+timeStr(c.ts)+'</div></div>'
-            +'<span class="x" onclick="delClip(\''+c.id+'\',event)">×</span></div>';
-        });
-      }
-      appEl().innerHTML=html; appEl().scrollTop=0;
+      const chips=KINDS.filter(k=>k[0]==='all'||k[0]==='fav'||present[k[0]]).map(function(k){
+        return '<div class="chip'+(clipFilter===k[0]?' active':'')+'" onclick="clipFilter=\''+k[0]+'\';route()">'+escHtml(k[1])+'</div>'; }).join('');
+      appEl().innerHTML='<div class="chips">'+chips+'</div>'
+        +'<input class="search" id="clipq" type="search" placeholder="Search clipboard…" '
+        +'oninput="clipSearch=this.value;renderClipList()" value="'+escHtml(clipSearch)+'">'
+        +'<div id="cliplist"></div>';
+      renderClipList();
+      const q=document.getElementById('clipq'); if(clipSearch){ q.focus(); q.setSelectionRange(q.value.length,q.value.length); }
+      appEl().scrollTop=0;
       foot().innerHTML='<button class="btn mut" onclick="goHome()">‹ Notes</button>'
         +'<span class="spring"></span><span class="btn mut" style="cursor:default">'+CLIPS.length+' items</span>'
         +'<button class="btn mut" onclick="send(\'quit\')">Quit</button>';
