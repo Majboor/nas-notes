@@ -156,7 +156,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
             try? FileManager.default.removeItem(atPath: NOTES_DIR + "/" + safe + ".md")
             rebuild()
         case "clip-copy":
-            if let id = body["id"] as? String { clips.copyBack(id); notify("Copied", "From clipboard history") }
+            if let id = body["id"] as? String { clips.copyBack(id) }   // in-app toast handles feedback
+        case "clip-fav":
+            if let id = body["id"] as? String { clips.setFav(id, (body["fav"] as? Bool) ?? true) }
         case "clip-delete":
             if let id = body["id"] as? String { clips.delete(id) }
         case "clip-clear":

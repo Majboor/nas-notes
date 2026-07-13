@@ -11,6 +11,8 @@ own `feature/*` branch, then merged to `main`.
 - [x] **Clipboard history** — captures copies, groups by date, filters by type
   (links/code/paths/images/videos/files/text), auto-labels code language + paths,
   click-to-copy-back, skips concealed clips *(v1.1)*
+- [x] **Clipboard: more types + search + favourites** — emails, errors/stack traces, colors, IPs,
+  phones; search box; ★ favourites (kept beyond the cap); in-app copy toast; reclassify-on-launch *(v1.2)*
 
 ## Next (v1.1)
 - [ ] **Standalone editor window** — pop the editor out of the popover into a real, resizable

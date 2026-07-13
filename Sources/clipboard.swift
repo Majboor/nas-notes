@@ -17,12 +17,25 @@ final class ClipStore {
     private var lastChange = NSPasteboard.general.changeCount
     private var seq = 0
 
-    init() { load(); lastChange = NSPasteboard.general.changeCount }
+    init() { load(); reclassifyExisting(); lastChange = NSPasteboard.general.changeCount }
 
     // MARK: persistence
     func load() {
         if let d = try? Data(contentsOf: URL(fileURLWithPath: ClipStore.jsonPath)),
            let a = (try? JSONSerialization.jsonObject(with: d)) as? [[String: Any]] { items = a }
+    }
+
+    // Re-run classification on already-stored string clips so older items pick up new categories
+    // (e.g. emails/errors captured before those detectors existed).
+    private func reclassifyExisting() {
+        var changed = false
+        for i in items.indices {
+            guard let t = items[i]["text"] as? String, items[i]["path"] == nil else { continue }
+            let (kind, lang) = classify(t.trimmingCharacters(in: .whitespacesAndNewlines))
+            if (items[i]["kind"] as? String) != kind { items[i]["kind"] = kind; changed = true }
+            if let lang = lang { items[i]["lang"] = lang } else { items[i]["lang"] = nil }
+        }
+        if changed { save() }
     }
     func save() {
         if let d = try? JSONSerialization.data(withJSONObject: items, options: []) {
@@ -119,12 +132,49 @@ final class ClipStore {
         return "file"
     }
 
-    // link -> path -> code -> text
+    // link -> email/ip/color/phone/path (single line) -> error -> code -> text
     private func classify(_ t: String) -> (String, String?) {
         if isURL(t) { return ("link", nil) }
-        if !t.contains("\n"), isPath(t) { return ("path", nil) }
+        if !t.contains("\n") {
+            if isEmail(t) { return ("email", nil) }
+            if isIP(t)    { return ("ip", nil) }
+            if isColor(t) { return ("color", nil) }
+            if isPhone(t) { return ("phone", nil) }
+            if isPath(t)  { return ("path", nil) }
+        }
+        if isError(t) { return ("error", nil) }
         if let lang = detectCode(t) { return ("code", lang) }
         return ("text", nil)
+    }
+
+    private func isError(_ t: String) -> Bool {
+        if t.contains("Traceback (most recent call last)") { return true }
+        if rx(t, "\\b\\w*(Error|Exception|Warning)\\b\\s*:") { return true }        // TypeError:, ...Warning:
+        if rx(t, "\\b[\\w.\\-/]+\\.(js|ts|jsx|tsx|py|rb|go|java|swift|c|cpp|php|rs):\\d+") { return true }  // file.js:123
+        if rx(t, "\\n\\s+at\\s") { return true }                                     // JS/Java stack frames
+        if rx(t, "(panic:|fatal error:|Segmentation fault|Caused by:|Unhandled exception)") { return true }
+        return false
+    }
+
+    private func rx(_ t: String, _ p: String) -> Bool {
+        return t.range(of: p, options: [.regularExpression]) != nil
+    }
+    private func isEmail(_ t: String) -> Bool {
+        return rx(t, "^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$")
+    }
+    private func isIP(_ t: String) -> Bool {
+        if rx(t, "^(25[0-5]|2[0-4]\\d|1?\\d?\\d)(\\.(25[0-5]|2[0-4]\\d|1?\\d?\\d)){3}$") { return true }  // IPv4
+        if t.contains(":"), rx(t, "^([0-9A-Fa-f]{0,4}:){2,7}[0-9A-Fa-f]{0,4}$") { return true }            // IPv6
+        return false
+    }
+    private func isColor(_ t: String) -> Bool {
+        if rx(t, "^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{4}|[0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$") { return true }
+        return rx(t, "^(rgb|rgba|hsl|hsla)\\([0-9.,%\\sA-Za-z/]+\\)$")
+    }
+    private func isPhone(_ t: String) -> Bool {
+        guard rx(t, "^\\+?[0-9][0-9 ()\\-.]{6,20}$") else { return false }
+        let digits = t.filter { $0.isNumber }.count
+        return digits >= 7 && digits <= 15
     }
 
     private func isURL(_ t: String) -> Bool {
@@ -186,9 +236,14 @@ final class ClipStore {
 
     private func trimAndSave() {
         if items.count > ClipStore.maxItems {
-            let dropped = items[ClipStore.maxItems...]
-            for it in dropped { if let p = it["path"] as? String, p.hasPrefix(ClipStore.dir) { try? FileManager.default.removeItem(atPath: p) } }
-            items = Array(items.prefix(ClipStore.maxItems))
+            // keep all favourites; trim oldest non-favourites beyond the cap
+            var kept: [[String: Any]] = []; var nonFav = 0
+            for it in items {
+                let fav = (it["fav"] as? Bool) == true
+                if fav || nonFav < ClipStore.maxItems { kept.append(it); if !fav { nonFav += 1 } }
+                else if let p = it["path"] as? String, p.hasPrefix(ClipStore.dir) { try? FileManager.default.removeItem(atPath: p) }
+            }
+            items = kept
         }
         save()
     }
@@ -208,6 +263,13 @@ final class ClipStore {
         lastChange = pb.changeCount   // don't re-capture our own copy-back
     }
 
+    func setFav(_ id: String, _ fav: Bool) {
+        if let i = items.firstIndex(where: { ($0["id"] as? String) == id }) {
+            if fav { items[i]["fav"] = true } else { items[i]["fav"] = nil }
+            save()
+        }
+    }
+
     func delete(_ id: String) {
         if let it = items.first(where: { ($0["id"] as? String) == id }),
            let p = it["path"] as? String, p.hasPrefix(ClipStore.dir) { try? FileManager.default.removeItem(atPath: p) }
@@ -224,6 +286,7 @@ final class ClipStore {
         let out: [[String: Any]] = items.prefix(ClipStore.maxItems).map { it in
             var o: [String: Any] = ["id": it["id"] ?? "", "ts": it["ts"] ?? 0, "kind": it["kind"] ?? "text"]
             if let l = it["lang"] { o["lang"] = l }
+            if (it["fav"] as? Bool) == true { o["fav"] = true }
             if let n = it["name"] { o["name"] = n }
             if let th = it["thumb"] { o["thumb"] = th }
             if let p = it["path"] as? String { o["path"] = p }
