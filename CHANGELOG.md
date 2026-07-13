@@ -3,6 +3,17 @@
 All notable changes to this project are documented here.
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.2.0]
+
+### Added
+- Clipboard: more data types — **emails, errors/stack traces, colors (with swatch), IP addresses,
+  phone numbers** — on top of links/code/paths/images/videos/files/text.
+- Clipboard **search** field (matches preview, filename, path, language, type).
+- Clipboard **favourites**: ★ any clip; a Favourites filter; favourites are protected from the history cap.
+- **In-app toast** on copy-back ("Now copied · <type> · <preview>") in the app's own theme.
+- Existing string clips are **re-classified on launch**, so items captured before a detector existed
+  (e.g. emails, errors) get re-sorted into the right category.
+
 ## [1.1.0]
 
 ### Added

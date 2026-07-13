@@ -19,9 +19,12 @@ project, but it's a general, dependency-free notes app.
 - **CherryTree export** — one click opens all notes as a CherryTree document.
 - **Copy** — copy a whole note (e.g. a prompt) to the clipboard in one click.
 - **Clipboard history** — a built-in clipboard manager: everything you copy is captured and shown
-  **grouped by date**, filterable by type — **Links · Code · Paths · Images · Videos · Files · Text**.
-  Code is **auto-labeled with its language** and file **paths are auto-detected**. Click any entry to
-  copy it back. Password-manager clips (concealed/transient) are ignored. Clear anytime.
+  **grouped by date**, filterable by type — **Links · Emails · Code · Errors · Paths · Colors · IPs ·
+  Phones · Images · Videos · Files · Text**. Code is **auto-labeled with its language**, errors/stack
+  traces and file paths are **auto-detected**, and colors show a swatch. **Search** across everything,
+  **★ favourite** the clips you keep reusing (favourites survive the history cap), and click any entry to
+  copy it back — with an in-app confirmation toast. Password-manager clips (concealed/transient) are
+  ignored. Clear anytime.
 - **Plain files, no lock-in** — notes are just `.md` files in a folder you control.
 
 ## Notes store
