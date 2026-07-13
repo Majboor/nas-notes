@@ -3,6 +3,14 @@
 All notable changes to this project are documented here.
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.3.0]
+
+### Added
+- Clipboard **de-duplication**: re-copying the same content no longer stacks — the existing card gains a
+  **×N** counter and moves to the top (images de-duped by content hash).
+- A rich README with **real UI screenshots** and a demo **GIF**, plus `Scripts/snapshot.swift` +
+  `Scripts/screenshots.sh` to regenerate them from the actual UI.
+
 ## [1.2.0]
 
 ### Added
