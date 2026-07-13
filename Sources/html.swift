@@ -49,7 +49,8 @@ let htmlTemplate = #"""
   .row .tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}
   .row .tag{font-size:10px;color:var(--accent);background:var(--code-bg);padding:1px 6px;border-radius:5px;white-space:nowrap;border:.5px solid transparent}
   .cdot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:5px;vertical-align:middle}
-  .chips.ntop{position:sticky;top:0;background:var(--panel);z-index:2;border-bottom:.5px solid var(--line);padding:8px 12px}
+  .chips.ntop{position:sticky;top:0;background:var(--panel);z-index:2;border-bottom:.5px solid var(--line);
+    padding:8px 12px;flex-wrap:wrap;overflow-x:visible;row-gap:6px}
   .chip .cc{opacity:.65;font-weight:700;font-size:10px;margin-left:2px}
   .chip.active .cc{opacity:.85}
   .empty{color:var(--muted);text-align:center;padding:40px 20px;font-size:13px}

@@ -32,6 +32,8 @@ func notes() -> [[String: Any]] {
       ["name":"model-routing","title":"Model routing","category":"AI & LLM","tags":["priority","codex","claude"],"body":"# Model routing\n\n1. Local CLIs first\n2. Proxy endpoint\n3. Other providers"],
       ["name":"posting","title":"Posting webhooks","category":"Social & Posting","tags":["make.com","linkedin","reddit"],"body":"# Posting webhooks\n\nPOST JSON with an `action` field to the webhook to publish to a channel."],
       ["name":"deploy","title":"Deploy","category":"Infra & Data","tags":["build","release"],"body":"# Deploy\n\n## Steps\n1. Pull latest\n2. Build & sign\n3. Tag the release\n\n```bash\ngit pull --rebase\n./Scripts/build.sh\n```"],
+      ["name":"cli-flags","title":"CLI flags","category":"Reference","tags":["cli","cheatsheet"],"body":"# CLI flags\n\n- `-p` print / non-interactive\n- `--resume <id>` resume a session"],
+      ["name":"vps","title":"VPS & SSH","category":"Servers & SSH","tags":["ssh","vps"],"body":"# VPS & SSH\n\n`ssh root@host` — main box that runs the services."],
       ["name":"standup","title":"Standup","category":"General","tags":["notes"],"body":"# Standup\n\n- Shipped category filter + note search\n- Reviewing PR #42\n- Next: standalone editor window"]
     ]
 }
