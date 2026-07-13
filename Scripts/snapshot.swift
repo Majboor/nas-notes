@@ -27,7 +27,7 @@ let DAY = 86400.0
 
 func notes() -> [[String: Any]] {
     return [
-      ["name":"welcome","title":"Welcome","body":"# Welcome\n\n**NAS Notes** keeps your handovers, commands and checklists one click away — in the menu bar and in Spotlight.\n\n## Try it\n- Click **+** to add a note\n- ⌘-Space → type a note's name to jump straight to it\n\n```bash\nls \"$NAS_NOTES_DIR\"\n```\n\n> Tip: keep things you reuse a lot here, then **Copy** in one click."],
+      ["name":"welcome","title":"Welcome","body":"# Welcome\n\n**Cherry** keeps your handovers, commands and checklists one click away — in the menu bar and in Spotlight.\n\n## Try it\n- Click **+** to add a note\n- ⌘-Space → type a note's name to jump straight to it\n\n```bash\nls \"$NAS_NOTES_DIR\"\n```\n\n> Tip: keep things you reuse a lot here, then **Copy** in one click."],
       ["name":"deploy","title":"Deploy","body":"# Deploy\n\n## Steps\n1. Pull latest\n2. Build & sign\n3. Tag the release\n\n```bash\ngit pull --rebase\n./Scripts/build.sh\ngit tag -a v1.2.0 -m \"release\"\ngit push --tags\n```\n\n- Rollback: `git checkout v1.1.0`"],
       ["name":"standup","title":"Standup","body":"# Standup\n\n- Shipped clipboard search + favourites\n- Reviewing PR #42\n- Next: standalone editor window"]
     ]
@@ -36,7 +36,7 @@ func notes() -> [[String: Any]] {
 func clips() -> [[String: Any]] {
     var c: [[String: Any]] = []
     func add(_ o: [String: Any], _ ago: Double) { var x = o; x["ts"] = NOW - ago; x["id"] = "c\(c.count)"; c.append(x) }
-    add(["kind":"link","preview":"https://github.com/Majboor/nas-notes","len":36,"count":4], 60)
+    add(["kind":"link","preview":"https://github.com/Majboor/cherry-note-taker","len":36,"count":4], 60)
     add(["kind":"error","preview":"TypeError: Cannot read properties of undefined (reading 'map')\n    at render (App.jsx:42)\n    at renderWithHooks (react-dom.js:14985)","len":150,"fav":true], 400)
     add(["kind":"code","lang":"swift","preview":"func greet(_ name: String) -> String {\n    return \"Hi \\(name)\"\n}","len":64], 900)
     add(["kind":"email","preview":"jordan@example.com","len":18], 1500)

@@ -1,6 +1,6 @@
 # Roadmap
 
-Future goals for NAS Notes. Each item has a proposal under `docs/proposals/` and is developed on its
+Future goals for Cherry. Each item has a proposal under `docs/proposals/` and is developed on its
 own `feature/*` branch, then merged to `main`.
 
 ## Now (v1.x)

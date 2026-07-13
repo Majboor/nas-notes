@@ -3,6 +3,14 @@
 All notable changes to this project are documented here.
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.4.0]
+
+### Changed
+- **Rebranded to Cherry Note Taker.** The menu-bar item is now **🍒 Cherry**, the app bundle is
+  `Cherry.app`, and the repository is `cherry-note-taker`. Internal identifiers
+  (`com.hico.nasnotes`, the `nasnote://` scheme, `NAS_NOTES_DIR`) are unchanged for compatibility.
+- Screenshots + demo GIF regenerated with the new branding.
+
 ## [1.3.0]
 
 ### Added
@@ -48,4 +56,4 @@ First public release.
 - Configurable notes store via `NAS_NOTES_DIR` (default `~/.rpidrive/notes`).
 - Native macOS look with automatic light/dark support.
 
-[1.0.0]: https://github.com/Majboor/nas-notes/releases/tag/v1.0.0
+[1.0.0]: https://github.com/Majboor/cherry-note-taker/releases/tag/v1.0.0
