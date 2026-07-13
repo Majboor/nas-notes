@@ -1,0 +1,11 @@
+# Build output
+build/
+*.o
+*.swiftmodule
+DerivedData/
+
+# macOS
+.DS_Store
+
+# The notes store is user data and never committed (may contain secrets).
+# Notes live in $NAS_NOTES_DIR (default ~/.rpidrive/notes), outside this repo.
