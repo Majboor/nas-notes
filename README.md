@@ -111,6 +111,9 @@ Adding/removing notes auto-runs `Scripts/rebuild.sh` to refresh the CherryTree d
 Notes are `.md` files in the directory set by `NAS_NOTES_DIR` (default `~/.rpidrive/notes`). The first
 `# Heading` line becomes the note's title. Back them up, grep them, or sync them however you like.
 
+Adding notes programmatically (e.g. from a script or an AI agent) is just writing a `.md` file —
+see **[docs/ADDING-NOTES.md](docs/ADDING-NOTES.md)** for the full handover.
+
 ## 🧱 Project layout
 
 ```
