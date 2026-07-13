@@ -82,6 +82,8 @@ let htmlTemplate = #"""
   .badge.link{color:#0a72ff} .badge.code{color:#a855f7} .badge.path{color:#0ea5a5}
   .badge.image{color:#e0873a} .badge.video{color:#e0384e} .badge.file{color:#7d8797} .badge.text{color:#7d8797}
   .badge.email{color:#0a72ff} .badge.phone{color:#22a06b} .badge.color{color:#e0873a} .badge.ip{color:#7c7cff} .badge.error{color:#e0384e}
+  .cnt{display:inline-block;margin-left:6px;font-size:9.5px;font-weight:700;padding:2px 6px;border-radius:999px;
+    background:var(--accent);color:#fff;vertical-align:top}
   .swatch{width:42px;height:42px;border-radius:9px;border:.5px solid var(--line);flex:0 0 auto}
   .search{margin:2px 12px 4px;padding:7px 11px;border:.5px solid var(--line);border-radius:9px;
     background:var(--code-bg);color:var(--ink);font-size:12.5px;outline:none}
@@ -217,7 +219,8 @@ let htmlTemplate = #"""
     let meta='';
     if(c.kind==='image'||c.kind==='video'||c.kind==='file'){ txt=escHtml(c.name||'file'); meta=escHtml(c.path||''); }
     else if(c.len&&c.len>1400){ meta=(c.len)+' chars'; }
-    return '<span class="badge '+c.kind+'">'+escHtml(badgeText(c))+'</span>'
+    const cnt=(c.count&&c.count>1)?'<span class="cnt">×'+c.count+'</span>':'';
+    return '<span class="badge '+c.kind+'">'+escHtml(badgeText(c))+'</span>'+cnt
       +'<div class="'+cls+'">'+txt+'</div>'+(meta?'<div class="cmeta">'+meta+'</div>':'');
   }
   function shortLabel(c){
