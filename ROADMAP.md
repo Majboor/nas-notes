@@ -8,6 +8,9 @@ own `feature/*` branch, then merged to `main`.
 - [x] Add / edit / delete notes in-app (writes Markdown files)
 - [x] Per-note Spotlight launchers via `nasnote://` URL scheme
 - [x] CherryTree export + one-click Copy
+- [x] **Clipboard history** — captures copies, groups by date, filters by type
+  (links/code/paths/images/videos/files/text), auto-labels code language + paths,
+  click-to-copy-back, skips concealed clips *(v1.1)*
 
 ## Next (v1.1)
 - [ ] **Standalone editor window** — pop the editor out of the popover into a real, resizable

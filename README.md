@@ -18,6 +18,10 @@ project, but it's a general, dependency-free notes app.
   the panel opens focused on it (via a `nasnote://<name>` URL scheme).
 - **CherryTree export** — one click opens all notes as a CherryTree document.
 - **Copy** — copy a whole note (e.g. a prompt) to the clipboard in one click.
+- **Clipboard history** — a built-in clipboard manager: everything you copy is captured and shown
+  **grouped by date**, filterable by type — **Links · Code · Paths · Images · Videos · Files · Text**.
+  Code is **auto-labeled with its language** and file **paths are auto-detected**. Click any entry to
+  copy it back. Password-manager clips (concealed/transient) are ignored. Clear anytime.
 - **Plain files, no lock-in** — notes are just `.md` files in a folder you control.
 
 ## Notes store
