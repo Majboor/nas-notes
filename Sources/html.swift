@@ -66,6 +66,32 @@ let htmlTemplate = #"""
   .hint{color:var(--muted);font-size:11px;padding:6px 18px;border-top:.5px solid var(--line);display:flex;align-items:center}
   .hint .del{margin-left:auto;color:var(--danger);cursor:pointer;font-weight:500}
 
+  /* clipboard */
+  .chips{display:flex;gap:6px;padding:8px 12px 6px;overflow-x:auto}
+  .chips::-webkit-scrollbar{display:none}
+  .chip{flex:0 0 auto;border:.5px solid var(--line);background:var(--code-bg);color:var(--muted);
+    padding:4px 11px;border-radius:999px;font-size:11.5px;font-weight:600;cursor:pointer;white-space:nowrap}
+  .chip.active{background:var(--accent);border-color:var(--accent);color:#fff}
+  .daterow{font-size:10.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;padding:13px 16px 5px}
+  .clip{display:flex;gap:10px;align-items:flex-start;padding:10px 14px;border-bottom:.5px solid var(--line);cursor:pointer}
+  .clip:last-child{border-bottom:0}
+  .clip:hover{background:var(--hover)}
+  .clip .cbody{flex:1;min-width:0}
+  .badge{display:inline-block;font-size:9px;font-weight:700;letter-spacing:.4px;padding:2px 6px;border-radius:5px;
+    background:var(--code-bg);color:var(--muted);text-transform:uppercase;margin-bottom:5px}
+  .badge.link{color:#0a72ff} .badge.code{color:#a855f7} .badge.path{color:#0ea5a5}
+  .badge.image{color:#e0873a} .badge.video{color:#e0384e} .badge.file{color:#7d8797} .badge.text{color:#7d8797}
+  .prev{font-size:12.5px;color:var(--ink);white-space:pre-wrap;word-break:break-word;
+    display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
+  .prev.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;background:var(--code-bg);
+    padding:8px 10px;border-radius:7px;-webkit-line-clamp:6;line-height:1.45}
+  .prev.linkish{color:var(--accent)}
+  .clip img.thumb{max-width:130px;max-height:84px;border-radius:7px;border:.5px solid var(--line);display:block}
+  .cmeta{font-size:10.5px;color:var(--muted);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .clip .x{color:var(--muted);font-size:15px;align-self:flex-start;padding:0 4px;line-height:1.2}
+  .clip .x:hover{color:var(--danger)}
+  .ficon{width:42px;height:42px;border-radius:9px;background:var(--code-bg);display:flex;align-items:center;justify-content:center;font-size:20px;flex:0 0 auto}
+
   footer{display:flex;align-items:center;gap:2px;padding:7px 10px 9px}
   .btn{appearance:none;border:0;background:transparent;color:var(--accent);
     padding:6px 9px;border-radius:7px;font-size:12.5px;font-weight:500;cursor:pointer}
@@ -78,9 +104,11 @@ let htmlTemplate = #"""
 </div>
 <script>
   const NOTES = /*__NOTES__*/;
-  let view = "/*__VIEW__*/";           // home | note | edit
+  let CLIPS = /*__CLIPS__*/;
+  let view = "/*__VIEW__*/";           // home | note | edit | clips
   let active = /*__ACTIVE__*/;
   let draft = null;
+  let clipFilter = 'all';
 
   function cur(){ return NOTES[active] || {name:'',title:'',body:''}; }
   function send(action, extra){ try{ window.webkit.messageHandlers.bridge.postMessage(Object.assign({action:action}, extra||{})); }catch(e){} }
@@ -141,9 +169,40 @@ let htmlTemplate = #"""
   function delNote(){ const n=cur(); if(!confirm('Delete “'+n.title+'”? This removes the note and its Spotlight app.')) return;
     send('delete',{name:n.name}); NOTES.splice(active,1); active=0; draft=null; view='home'; route(); }
 
+  // ---------- clipboard ----------
+  function showClips(){ view='clips'; route(); }
+  const KINDS=[['all','All'],['link','Links'],['code','Code'],['path','Paths'],['image','Images'],['video','Videos'],['file','Files'],['text','Text']];
+  function twoDigit(n){ return (n<10?'0':'')+n; }
+  function timeStr(ts){ const d=new Date(ts*1000); return twoDigit(d.getHours())+':'+twoDigit(d.getMinutes()); }
+  function dayKey(ts){ const d=new Date(ts*1000); const n=new Date();
+    const dd=new Date(d.getFullYear(),d.getMonth(),d.getDate()); const t0=new Date(n.getFullYear(),n.getMonth(),n.getDate());
+    const diff=Math.round((t0-dd)/86400000);
+    if(diff===0) return 'Today'; if(diff===1) return 'Yesterday'; if(diff>1&&diff<7) return d.toLocaleDateString(undefined,{weekday:'long'});
+    return d.toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'}); }
+  function icon(kind){ return kind==='video'?'🎞':kind==='file'?'📄':kind==='image'?'🖼':'📋'; }
+  function badgeText(c){ return c.kind==='code' ? ('Code'+(c.lang?' · '+c.lang:'')) : c.kind; }
+  function clipInner(c){
+    if(c.kind==='image'){ return (c.thumb?'<img class="thumb" src="'+c.thumb+'">':'<div class="ficon">🖼</div>'); }
+    if(c.kind==='video'||c.kind==='file'){ return '<div class="ficon">'+icon(c.kind)+'</div>'; }
+    return '';
+  }
+  function clipMain(c){
+    let cls='prev', txt=escHtml(c.preview||'');
+    if(c.kind==='code'||c.kind==='path') cls='prev mono';
+    else if(c.kind==='link') cls='prev linkish';
+    let meta='';
+    if(c.kind==='image'||c.kind==='video'||c.kind==='file'){ txt=escHtml(c.name||'file'); meta=escHtml(c.path||''); }
+    else if(c.len&&c.len>1400){ meta=(c.len)+' chars'; }
+    return '<span class="badge '+c.kind+'">'+escHtml(badgeText(c))+'</span>'
+      +'<div class="'+cls+'">'+txt+'</div>'+(meta?'<div class="cmeta">'+meta+'</div>':'');
+  }
+  function delClip(id,ev){ ev.stopPropagation(); send('clip-delete',{id:id}); CLIPS=CLIPS.filter(c=>c.id!==id); route(); }
+  function clearClips(){ if(!confirm('Clear all clipboard history?')) return; send('clip-clear'); CLIPS=[]; route(); }
+
   function route(){
     if(view==='home'){
-      bar().innerHTML='<span class="spring"></span><div class="mid">NAS · Notes</div><span class="spring"></span>'
+      bar().innerHTML='<button class="nav l" title="Clipboard" onclick="showClips()">📋 Clipboard</button>'
+        +'<div class="mid">NAS · Notes</div><span class="spring"></span>'
         +'<button class="plus" title="New note" onclick="addNote()">+</button>';
       appEl().className='';
       appEl().innerHTML = NOTES.length ? '<div class="list">'+NOTES.map(function(n,idx){
@@ -176,6 +235,32 @@ let htmlTemplate = #"""
         +(draft.isNew?'':'<span class="del" onclick="delNote()">Delete note</span>')+'</div></div>';
       const ta=document.getElementById('ta'); ta.value=draft.body; ta.focus();
       foot().innerHTML='';
+    }
+    else if(view==='clips'){
+      bar().innerHTML='<button class="nav l" onclick="goHome()">‹ Notes</button>'
+        +'<div class="mid">Clipboard</div>'
+        +'<button class="nav r mut" onclick="clearClips()">Clear</button>';
+      appEl().className='';
+      const present={}; CLIPS.forEach(c=>present[c.kind]=1);
+      const chips=KINDS.filter(k=>k[0]==='all'||present[k[0]]).map(function(k){
+        return '<div class="chip'+(clipFilter===k[0]?' active':'')+'" onclick="clipFilter=\''+k[0]+'\';route()">'+k[1]+'</div>'; }).join('');
+      const list=CLIPS.filter(c=>clipFilter==='all'||c.kind===clipFilter);
+      let html='<div class="chips">'+chips+'</div>';
+      if(!list.length){ html+='<div class="empty">Nothing here yet.<br>Copy something and it shows up.</div>'; }
+      else {
+        let lastDay='';
+        list.forEach(function(c){
+          const dk=dayKey(c.ts);
+          if(dk!==lastDay){ html+='<div class="daterow">'+escHtml(dk)+'</div>'; lastDay=dk; }
+          html+='<div class="clip" onclick="send(\'clip-copy\',{id:\''+c.id+'\'})">'
+            +clipInner(c)+'<div class="cbody">'+clipMain(c)+'<div class="cmeta">'+timeStr(c.ts)+'</div></div>'
+            +'<span class="x" onclick="delClip(\''+c.id+'\',event)">×</span></div>';
+        });
+      }
+      appEl().innerHTML=html; appEl().scrollTop=0;
+      foot().innerHTML='<button class="btn mut" onclick="goHome()">‹ Notes</button>'
+        +'<span class="spring"></span><span class="btn mut" style="cursor:default">'+CLIPS.length+' items</span>'
+        +'<button class="btn mut" onclick="send(\'quit\')">Quit</button>';
     }
   }
   route();

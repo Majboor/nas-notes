@@ -47,6 +47,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     let popover = NSPopover()
     var web: WKWebView!
     var notes: [Note] = []
+    let clips = ClipStore()
+    var clipTimer: Timer?
 
     func applicationDidFinishLaunching(_ n: Notification) {
         NSAppleEventManager.shared().setEventHandler(
@@ -69,6 +71,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
         popover.contentSize = NSSize(width: 600, height: 680)
         popover.behavior = .transient
         popover.delegate = self
+        // watch the clipboard in the background so history accumulates even when the panel is closed
+        clipTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in self?.clips.poll() }
         render()
     }
 
@@ -78,6 +82,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
         let idx = (active >= 0 && active < notes.count) ? active : 0
         let html = htmlTemplate
             .replacingOccurrences(of: "/*__NOTES__*/", with: "[\(items)]")
+            .replacingOccurrences(of: "/*__CLIPS__*/", with: clips.injectJSON())
             .replacingOccurrences(of: "/*__VIEW__*/", with: view)
             .replacingOccurrences(of: "/*__ACTIVE__*/", with: String(idx))
         web.loadHTMLString(html, baseURL: nil)
@@ -150,6 +155,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
             let safe = name.replacingOccurrences(of: "/", with: "-")
             try? FileManager.default.removeItem(atPath: NOTES_DIR + "/" + safe + ".md")
             rebuild()
+        case "clip-copy":
+            if let id = body["id"] as? String { clips.copyBack(id); notify("Copied", "From clipboard history") }
+        case "clip-delete":
+            if let id = body["id"] as? String { clips.delete(id) }
+        case "clip-clear":
+            clips.clearAll()
         case "quit":
             NSApp.terminate(nil)
         default: break

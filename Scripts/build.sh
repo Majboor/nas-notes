@@ -10,7 +10,7 @@ LSREG="/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServic
 echo "› compiling…"
 pkill -f "NAS Notes" 2>/dev/null || true; sleep 1
 rm -rf "$APP"; mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
-swiftc -O -o "$APP/Contents/MacOS/NAS Notes" "$HERE/Sources/main.swift" "$HERE/Sources/html.swift"
+swiftc -O -o "$APP/Contents/MacOS/NAS Notes" "$HERE"/Sources/*.swift
 
 cat > "$APP/Contents/Info.plist" <<'EOF'
 <?xml version="1.0" encoding="UTF-8"?>
