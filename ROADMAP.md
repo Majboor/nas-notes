@@ -13,6 +13,7 @@ own `feature/*` branch, then merged to `main`.
   click-to-copy-back, skips concealed clips *(v1.1)*
 - [x] **Clipboard: more types + search + favourites** — emails, errors/stack traces, colors, IPs,
   phones; search box; ★ favourites (kept beyond the cap); in-app copy toast; reclassify-on-launch *(v1.2)*
+- [x] **Clipboard de-duplication** — re-copies collapse into a ×N counter instead of stacking *(v1.3)*
 
 ## Next (v1.1)
 - [ ] **Standalone editor window** — pop the editor out of the popover into a real, resizable

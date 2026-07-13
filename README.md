@@ -1,84 +1,133 @@
-# NAS Notes
+<div align="center">
 
-A **super-light macOS menu-bar notes app** in ~300 lines of Swift. It lives in your menu bar,
-keeps a set of plain-Markdown notes, and gives each note its own **Spotlight launcher** so you can
-jump straight to it with ⌘-Space. Built originally as the "handover notes" panel for a home-NAS
-project, but it's a general, dependency-free notes app.
+# 🗒️ NAS Notes
 
-<!-- add docs/screenshot.png -->
+**A super-light macOS menu-bar notes app — with a built-in smart clipboard manager.**
 
-## Features
+Markdown notes, Spotlight launchers, CherryTree export, and a clipboard history that
+auto-sorts everything you copy — in ~300 lines of dependency-free Swift.
 
-- **Menu-bar popover** — click the menu-bar item for an **All Notes** list; open any note to read it.
-- **Native macOS UI** — SF font, segmented navigation, light/dark aware. No web frameworks bundled;
-  the UI is a single inline `WKWebView` document.
-- **Add / edit / delete in-app** — write Markdown, hit **Save**, it writes straight back to the `.md`.
-- **Markdown rendering** — headings, code fences, lists, blockquotes, links, inline code — no external libs.
-- **Spotlight launchers** — every note gets a tiny `<Title> Handover.app`; ⌘-Space → type the note name →
-  the panel opens focused on it (via a `nasnote://<name>` URL scheme).
-- **CherryTree export** — one click opens all notes as a CherryTree document.
-- **Copy** — copy a whole note (e.g. a prompt) to the clipboard in one click.
-- **Clipboard history** — a built-in clipboard manager: everything you copy is captured and shown
-  **grouped by date**, filterable by type — **Links · Emails · Code · Errors · Paths · Colors · IPs ·
-  Phones · Images · Videos · Files · Text**. Code is **auto-labeled with its language**, errors/stack
-  traces and file paths are **auto-detected**, and colors show a swatch. **Search** across everything,
-  **★ favourite** the clips you keep reusing (favourites survive the history cap), and click any entry to
-  copy it back — with an in-app confirmation toast. Password-manager clips (concealed/transient) are
-  ignored. Clear anytime.
-- **Plain files, no lock-in** — notes are just `.md` files in a folder you control.
+![version](https://img.shields.io/badge/version-1.3.0-2563eb)
+![platform](https://img.shields.io/badge/macOS-11%2B-lightgrey?logo=apple)
+![Swift](https://img.shields.io/badge/Swift-5-f05138?logo=swift&logoColor=white)
+![license](https://img.shields.io/badge/license-MIT-22c55e)
+![deps](https://img.shields.io/badge/dependencies-none-8b5cf6)
 
-## Notes store
+<br>
 
-Notes are `.md` files in a directory chosen by the `NAS_NOTES_DIR` environment variable
-(default `~/.rpidrive/notes`). The first `# Heading` line of each file becomes the note's title.
+<img src="docs/img/demo.gif" width="440" alt="NAS Notes demo">
 
-## Install
+</div>
 
-Requirements: macOS 11+, Xcode command-line tools (`swiftc`). CherryTree is optional
-(`brew install --cask cherry-tree` or `brew install cherrytree`) for the export button.
+---
+
+## ✨ What it does
+
+- 🗂️ **Menu-bar notes** — an **All Notes** list; open any note to read rendered Markdown.
+- ✍️ **Add / edit / delete in-app** — write Markdown, hit **Save**, it's a plain `.md` file.
+- 🔎 **Spotlight launchers** — every note gets its own app; ⌘-Space → type its name → jump straight to it.
+- 📋 **Clipboard history** — everything you copy, auto-sorted by **type** and **date**, with search & favourites.
+- 🌳 **CherryTree export** & one-click **Copy** — grab a whole note (or prompt) instantly.
+- 🪶 **No lock-in, no dependencies** — notes are just files in a folder you choose; pure AppKit + WebKit.
+
+<br>
+
+<div align="center">
+<table>
+  <tr>
+    <td align="center"><img src="docs/img/home.png" width="250"><br><sub><b>All Notes</b></sub></td>
+    <td align="center"><img src="docs/img/note.png" width="250"><br><sub><b>Read a note</b></sub></td>
+    <td align="center"><img src="docs/img/clips.png" width="250"><br><sub><b>Clipboard history</b></sub></td>
+  </tr>
+</table>
+</div>
+
+---
+
+## 📋 The clipboard manager
+
+Everything you copy is captured into a local history and **auto-classified** — no tagging, no setup.
+
+<div align="center">
+<table>
+  <tr>
+    <td align="center"><img src="docs/img/search.png" width="270"><br><sub><b>Search + filter chips</b></sub></td>
+    <td align="center"><img src="docs/img/toast.png" width="270"><br><sub><b>Click to copy back · in-app toast</b></sub></td>
+  </tr>
+</table>
+</div>
+
+| | |
+|---|---|
+| 🔗 **Links** · ✉️ **Emails** · 📞 **Phones** | detected from plain strings |
+| 🎨 **Colors** (with a live swatch) · 🌐 **IPs** | `#3b82f6`, `192.168.1.24`, … |
+| 💻 **Code** — *auto-labeled by language* | swift · python · js · bash · json · sql · html · … |
+| 🐞 **Errors & stack traces** | `TypeError:`, `file.js:42`, tracebacks → their own category |
+| 📁 **Paths** · 🖼️ **Images** · 🎞️ **Videos** · 📄 **Files** | thumbnails for images; name + path for files |
+
+Plus:
+- 🔁 **Copy the same thing twice?** It doesn't duplicate — the card shows a **×2 / ×3** counter and jumps to the top.
+- 🔍 **Search** across preview text, filename, path, language and type.
+- ⭐ **Favourites** — star the clips you reuse; they're kept even past the history cap.
+- 🔒 **Privacy-aware** — password-manager clips (concealed/transient) are **ignored**; history is capped and local
+  (`~/Library/Application Support/NASNotes/clips`). **Clear** anytime.
+
+---
+
+## 🚀 Install
+
+Requirements: macOS 11+, Xcode command-line tools (`swiftc`). CherryTree optional (`brew install cherrytree`).
 
 ```bash
 git clone https://github.com/Majboor/nas-notes.git
 cd nas-notes
-./Scripts/build.sh            # compiles + installs ~/Applications/NAS Notes.app
-./Scripts/install-login-item.sh   # (optional) start it at login
+./Scripts/build.sh                # compiles + installs "~/Applications/NAS Notes.app"
+./Scripts/install-login-item.sh   # (optional) start at login
 ```
 
-`build.sh` seeds the notes folder with `examples/welcome.md` if it's empty, then launches the app —
-look for the **note icon** in your menu bar.
+Look for the **note icon** in your menu bar. `build.sh` seeds a sample note if your notes folder is empty.
 
-## Usage
+---
+
+## 🎯 Usage
 
 | Action | How |
 |--------|-----|
 | Browse notes | Click the menu-bar item → **All Notes** |
-| Read a note | Click a row |
-| New note | **+** (top-right of All Notes) |
-| Edit | Open a note → **Edit** → **Save** |
-| Delete | Edit mode → **Delete note** |
+| New note | **+** (top-right) |
+| Edit / delete | Open a note → **Edit** → **Save** / **Delete note** |
 | Copy a note | Note view → **Copy** |
 | Open in CherryTree | Note view → **CherryTree** |
+| Open the clipboard | **📋 Clipboard** (top-left of All Notes) |
+| Copy an item back | Click it (a toast confirms) |
 | Jump to a note from anywhere | ⌘-Space → type `"<Note> Handover"` |
 
-After adding/removing notes, the app auto-runs `Scripts/rebuild.sh` to refresh the CherryTree doc
-and the Spotlight launchers. You can also run it by hand.
+Adding/removing notes auto-runs `Scripts/rebuild.sh` to refresh the CherryTree doc and Spotlight launchers.
 
-## Project layout
+---
+
+## 🗄️ Notes store
+
+Notes are `.md` files in the directory set by `NAS_NOTES_DIR` (default `~/.rpidrive/notes`). The first
+`# Heading` line becomes the note's title. Back them up, grep them, or sync them however you like.
+
+## 🧱 Project layout
 
 ```
-Sources/main.swift      # menu-bar app, popover, file I/O, URL scheme
-Sources/html.swift      # the UI (HTML/CSS/JS) as one inline template + Markdown renderer
-Scripts/build.sh        # compile + bundle + install the .app
+Sources/main.swift        # menu-bar app, popover, file I/O, nasnote:// URL scheme, bridge
+Sources/html.swift        # the UI (HTML/CSS/JS) + Markdown renderer, as one inline template
+Sources/clipboard.swift   # pasteboard watcher, classifier, on-disk clip store
+Scripts/build.sh          # compile + bundle + install the .app
 Scripts/install-login-item.sh
-Scripts/make-launchers.sh   # build/prune the per-note Spotlight apps
-Scripts/rebuild.sh          # regenerate CherryTree doc + launchers
-examples/welcome.md     # sample note
+Scripts/make-launchers.sh # build/prune the per-note Spotlight apps
+Scripts/rebuild.sh        # regenerate CherryTree doc + launchers
 ```
 
-## Roadmap
+## 🗺️ Roadmap
 
-See [ROADMAP.md](ROADMAP.md). Work happens on `feature/*` branches.
+See [ROADMAP.md](ROADMAP.md) — standalone editor window, note search, git-backed sync, global hotkey.
+Work happens on `feature/*` branches. Changes are logged in [CHANGELOG.md](CHANGELOG.md).
 
-## License
+## 📄 License
 
 MIT — see [LICENSE](LICENSE).

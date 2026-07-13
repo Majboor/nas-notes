@@ -1,4 +1,5 @@
 import Cocoa
+import CryptoKit
 
 // Clipboard history: a lightweight pasteboard watcher + on-disk store.
 // Captures text / links / code (auto-labeled language) / paths / images / videos / files,
@@ -66,61 +67,63 @@ final class ClipStore {
         // 1) file URLs (Finder copies, video/image/other files)
         if let urls = pb.readObjects(forClasses: [NSURL.self],
                                      options: [.urlReadingFileURLsOnly: true]) as? [URL], !urls.isEmpty {
-            for u in urls { addFile(u) }
-            trimAndSave(); return
+            for u in urls { addFile(u) }; return
         }
         // 2) image / photo data
         if let types = pb.types, types.contains(.png) || types.contains(.tiff),
-           let img = NSImage(pasteboard: pb) {
-            addImage(img); trimAndSave(); return
-        }
+           let img = NSImage(pasteboard: pb) { addImage(img); return }
         // 3) text of some kind
         if let s = pb.string(forType: .string), !s.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            addString(s); trimAndSave(); return
+            addString(s); return
         }
     }
 
-    private func dupeOfLatest(_ sig: String) -> Bool {
-        if let first = items.first, (first["sig"] as? String) == sig { return true }
-        return false
-    }
+    private func sha(_ d: Data) -> String { SHA256.hash(data: d).map { String(format: "%02x", $0) }.joined().prefix(16).description }
 
-    private func push(_ item: [String: Any]) { items.insert(item, at: 0) }
+    // If an item with the same signature exists, bump its ×count and move it to the top
+    // (so re-copying shows "×2" instead of a duplicate card). Otherwise insert a fresh item.
+    private func bump(_ i: Int) {
+        var it = items.remove(at: i)
+        it["count"] = ((it["count"] as? Int) ?? 1) + 1
+        it["ts"] = Date().timeIntervalSince1970
+        items.insert(it, at: 0)
+        trimAndSave()
+    }
+    private func commit(_ sig: String, _ base: [String: Any]) {
+        if let i = items.firstIndex(where: { ($0["sig"] as? String) == sig }) { bump(i); return }
+        var it = base
+        it["id"] = newID(); it["ts"] = Date().timeIntervalSince1970; it["sig"] = sig; it["count"] = 1
+        items.insert(it, at: 0); trimAndSave()
+    }
 
     // MARK: classifiers
     private func addString(_ s: String) {
         let t = s.trimmingCharacters(in: .whitespacesAndNewlines)
         let sig = "s:" + String(t.prefix(200)) + ":\(t.count)"
-        if dupeOfLatest(sig) { return }
         let (kind, lang) = classify(t)
-        var it: [String: Any] = ["id": newID(), "ts": Date().timeIntervalSince1970, "kind": kind,
-                                 "text": String(s.prefix(50000)), "sig": sig]
-        if let lang = lang { it["lang"] = lang }
-        push(it)
+        var base: [String: Any] = ["kind": kind, "text": String(s.prefix(50000))]
+        if let lang = lang { base["lang"] = lang }
+        commit(sig, base)
     }
 
     private func addFile(_ u: URL) {
         let path = u.path, name = u.lastPathComponent
-        let sig = "f:" + path
-        if dupeOfLatest(sig) { return }
         let kind = fileKind(name)
-        var it: [String: Any] = ["id": newID(), "ts": Date().timeIntervalSince1970, "kind": kind,
-                                 "path": path, "name": name, "sig": sig]
-        if kind == "image", let img = NSImage(contentsOf: u) { it["thumb"] = thumbURI(img) }
-        push(it)
+        var base: [String: Any] = ["kind": kind, "path": path, "name": name]
+        if kind == "image", let img = NSImage(contentsOf: u) { base["thumb"] = thumbURI(img) }
+        commit("f:" + path, base)
     }
 
     private func addImage(_ img: NSImage) {
-        let id = newID()
-        let file = ClipStore.dir + "/img-\(id).png"
-        if let tiff = img.tiffRepresentation, let rep = NSBitmapImageRep(data: tiff),
-           let png = rep.representation(using: .png, properties: [:]) {
-            try? png.write(to: URL(fileURLWithPath: file))
-        }
-        let sig = "i:\(id)"
+        guard let tiff = img.tiffRepresentation, let rep = NSBitmapImageRep(data: tiff),
+              let png = rep.representation(using: .png, properties: [:]) else { return }
+        let sig = "i:" + sha(png)
+        if let i = items.firstIndex(where: { ($0["sig"] as? String) == sig }) { bump(i); return }  // dedup identical images
+        let id = newID(); let file = ClipStore.dir + "/img-\(id).png"
+        try? png.write(to: URL(fileURLWithPath: file))
         let it: [String: Any] = ["id": id, "ts": Date().timeIntervalSince1970, "kind": "image",
-                                 "path": file, "name": "Image", "thumb": thumbURI(img), "sig": sig]
-        push(it)
+                                 "path": file, "name": "Image", "thumb": thumbURI(img), "sig": sig, "count": 1]
+        items.insert(it, at: 0); trimAndSave()
     }
 
     private func fileKind(_ name: String) -> String {
@@ -286,6 +289,7 @@ final class ClipStore {
         let out: [[String: Any]] = items.prefix(ClipStore.maxItems).map { it in
             var o: [String: Any] = ["id": it["id"] ?? "", "ts": it["ts"] ?? 0, "kind": it["kind"] ?? "text"]
             if let l = it["lang"] { o["lang"] = l }
+            if let cnt = it["count"] as? Int, cnt > 1 { o["count"] = cnt }
             if (it["fav"] as? Bool) == true { o["fav"] = true }
             if let n = it["name"] { o["name"] = n }
             if let th = it["thumb"] { o["thumb"] = th }
