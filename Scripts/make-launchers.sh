@@ -8,11 +8,12 @@ APPS="$HOME/Applications"
 LSREG="/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister"
 
 cap(){ printf '%s' "$1" | awk '{print toupper(substr($0,1,1)) substr($0,2)}'; }
+xesc(){ printf '%s' "$1" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g'; }
 
 # prune launchers whose note no longer exists (matched by our bundle id)
 for app in "$APPS"/*\ Handover.app; do
   [ -e "$app" ] || continue
-  id=$(/usr/bin/defaults read "$app/Contents/Info" CFBundleIdentifier 2>/dev/null)
+  id=$(/usr/bin/defaults read "$app/Contents/Info" CFBundleIdentifier 2>/dev/null || true)
   case "$id" in
     com.hico.nasnote.*) base="${id#com.hico.nasnote.}"; [ -f "$NOTES/$base.md" ] || { rm -rf "$app"; echo "pruned: $(basename "$app")"; } ;;
   esac
@@ -24,14 +25,16 @@ for md in "$NOTES"/*.md; do
   title=$(grep -m1 '^# ' "$md" | sed 's/^# //' || true)
   [ -z "$title" ] && title="$base"
   disp="$(cap "$title") Handover"
+  disp=$(printf '%s' "$disp" | tr '/:' '--')  # "/" in a title would nest the .app path; ":" is Finder's separator
   app="$APPS/$disp.app"
+  xdisp=$(xesc "$disp")
   rm -rf "$app"; mkdir -p "$app/Contents/MacOS"
   cat > "$app/Contents/Info.plist" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0"><dict>
-  <key>CFBundleName</key><string>$disp</string>
-  <key>CFBundleDisplayName</key><string>$disp</string>
+  <key>CFBundleName</key><string>$xdisp</string>
+  <key>CFBundleDisplayName</key><string>$xdisp</string>
   <key>CFBundleIdentifier</key><string>com.hico.nasnote.$base</string>
   <key>CFBundleVersion</key><string>1.0</string>
   <key>CFBundlePackageType</key><string>APPL</string>

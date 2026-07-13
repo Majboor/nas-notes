@@ -44,6 +44,13 @@ let htmlTemplate = #"""
   .row .tt{font-weight:600;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .row .pv{color:var(--muted);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
   .row .chev{color:var(--muted);font-size:16px;flex:0 0 auto}
+  .row .cat{font-size:10px;font-weight:600;color:var(--muted);background:var(--code-bg);border:.5px solid var(--line);
+    padding:2px 8px;border-radius:999px;flex:0 0 auto;white-space:nowrap}
+  .row .tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}
+  .row .tag{font-size:10px;color:var(--accent);background:var(--code-bg);padding:1px 6px;border-radius:5px;white-space:nowrap}
+  .chips.ntop{position:sticky;top:0;background:var(--panel);z-index:2;border-bottom:.5px solid var(--line);padding:8px 12px}
+  .chip .cc{opacity:.65;font-weight:700;font-size:10px;margin-left:2px}
+  .chip.active .cc{opacity:.85}
   .empty{color:var(--muted);text-align:center;padding:40px 20px;font-size:13px}
 
   /* rendered markdown */
@@ -143,15 +150,24 @@ let htmlTemplate = #"""
   let view = "/*__VIEW__*/";           // home | note | edit | clips
   let active = /*__ACTIVE__*/;
   let draft = null;
+  let noteFilter = 'All';
+  let noteSearch = '';
   let clipFilter = 'all';
   let clipSearch = '';
 
   function cur(){ return NOTES[active] || {name:'',title:'',body:''}; }
   function send(action, extra){ try{ window.webkit.messageHandlers.bridge.postMessage(Object.assign({action:action}, extra||{})); }catch(e){} }
   function escHtml(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-  function titleOf(body){ const m=(body||'').split('\n').find(l=>/^#\s/.test(l.trim())); return m?m.trim().replace(/^#\s+/,''):'Untitled'; }
+  function titleOf(body){ const m=stripFM(body).split('\n').find(l=>/^#\s/.test(l.trim())); return m?m.trim().replace(/^#\s+/,''):'Untitled'; }
+  // Remove a leading YAML frontmatter block (--- … ---) so it never shows in the note view or preview.
+  function stripFM(body){
+    const s=body||'';
+    if(!/^---\s*\n/.test(s)) return s;
+    const m=s.match(/^---\s*\n[\s\S]*?\n---\s*\n?/);
+    return m ? s.slice(m[0].length) : s;
+  }
   function firstText(body){
-    const lines=(body||'').split('\n');
+    const lines=stripFM(body).split('\n');
     for(let i=0;i<lines.length;i++){ let l=lines[i].trim();
       if(!l||/^#/.test(l)||l.indexOf('---')===0||l.indexOf('```')===0) continue;
       return l.replace(/[*`>#_\[\]]/g,'').replace(/\(([^)]+)\)/g,'').slice(0,90);
@@ -324,18 +340,49 @@ let htmlTemplate = #"""
     cont.innerHTML=html;
   }
 
+  // ---------- notes home list (category + text search) ----------
+  function noteMatches(n){
+    const q=noteSearch.trim().toLowerCase(); if(!q) return true;
+    const hay=((n.title||'')+' '+(n.category||'')+' '+((n.tags||[]).join(' '))+' '+stripFM(n.body||'')).toLowerCase();
+    return hay.indexOf(q)>=0;
+  }
+  function renderNoteList(){
+    const cont=document.getElementById('notelist'); if(!cont) return;
+    const rows=NOTES.map(function(n,idx){ return {n:n,idx:idx}; })
+      .filter(function(o){ return noteFilter==='All' || (o.n.category||'General')===noteFilter; })
+      .filter(function(o){ return noteMatches(o.n); })
+      .map(function(o){ const n=o.n;
+        const tags=(n.tags&&n.tags.length)?'<div class="tags">'+n.tags.slice(0,4).map(function(t){return '<span class="tag">'+escHtml(t)+'</span>';}).join('')+'</div>':'';
+        return '<div class="row" onclick="openNote('+o.idx+')"><div class="ic">'+(n.name==='email'?'✉️':'🗄️')+'</div>'
+          +'<div class="tx"><div class="tt">'+escHtml(n.title)+'</div><div class="pv">'+escHtml(firstText(n.body))+'</div>'+tags+'</div>'
+          +((noteFilter==='All'&&!noteSearch)?'<div class="cat">'+escHtml(n.category||'General')+'</div>':'')
+          +'<div class="chev">›</div></div>';
+      }).join('');
+    cont.innerHTML = rows || '<div class="empty">'+(noteSearch?'No notes match “'+escHtml(noteSearch)+'”.':'Nothing in “'+escHtml(noteFilter)+'”.')+'</div>';
+  }
+
   function route(){
     if(view==='home'){
       bar().innerHTML='<button class="nav l" title="Clipboard" onclick="showClips()">📋 Clipboard</button>'
         +'<div class="mid">🍒 Cherry</div><span class="spring"></span>'
         +'<button class="plus" title="New note" onclick="addNote()">+</button>';
       appEl().className='';
-      appEl().innerHTML = NOTES.length ? '<div class="list">'+NOTES.map(function(n,idx){
-          return '<div class="row" onclick="openNote('+idx+')"><div class="ic">'+(n.name==='email'?'✉️':'🗄️')+'</div>'
-            +'<div class="tx"><div class="tt">'+escHtml(n.title)+'</div><div class="pv">'+escHtml(firstText(n.body))+'</div></div>'
-            +'<div class="chev">›</div></div>';
-        }).join('')+'</div>'
-        : '<div class="empty">No notes yet.<br>Tap + to add one.</div>';
+      if(!NOTES.length){ appEl().innerHTML='<div class="empty">No notes yet.<br>Tap + to add one.</div>'; }
+      else {
+        // category chips (built from the notes; "All" first, then categories in first-seen order)
+        const cats=['All'];
+        NOTES.forEach(function(n){ const c=(n.category||'General'); if(cats.indexOf(c)<0) cats.push(c); });
+        if(cats.indexOf(noteFilter)<0) noteFilter='All';
+        window.__cats=cats;
+        const chips=cats.map(function(c,i){ const cnt=(c==='All')?NOTES.length:NOTES.filter(function(n){return (n.category||'General')===c;}).length;
+          return '<div class="chip'+(noteFilter===c?' active':'')+'" onclick="noteFilter=window.__cats['+i+'];noteSearch=\'\';route()">'+escHtml(c)+' <span class="cc">'+cnt+'</span></div>'; }).join('');
+        appEl().innerHTML='<div class="chips ntop">'+chips+'</div>'
+          +'<input class="search" id="noteq" type="search" placeholder="Search notes — title, tag, text…" '
+          +'oninput="noteSearch=this.value;renderNoteList()" value="'+escHtml(noteSearch)+'">'
+          +'<div class="list" id="notelist"></div>';
+        renderNoteList();
+        const q=document.getElementById('noteq'); if(noteSearch&&q){ q.focus(); q.setSelectionRange(q.value.length,q.value.length); }
+      }
       foot().innerHTML='<button class="btn mut" onclick="send(\'reveal\')">Folder</button>'
         +'<span class="spring"></span><button class="btn mut" onclick="send(\'quit\')">Quit</button>';
     }
@@ -344,8 +391,8 @@ let htmlTemplate = #"""
       bar().innerHTML='<button class="nav l" onclick="goHome()">‹ Notes</button>'
         +'<div class="mid">'+escHtml(n.title)+'</div>'
         +'<button class="nav r strong" onclick="openEdit()">Edit</button>';
-      appEl().className='pad'; appEl().innerHTML=md(n.body); appEl().scrollTop=0;
-      foot().innerHTML='<button class="btn" onclick="send(\'copy\',{text:cur().body})">Copy</button>'
+      appEl().className='pad'; appEl().innerHTML=md(stripFM(n.body)); appEl().scrollTop=0;
+      foot().innerHTML='<button class="btn" onclick="send(\'copy\',{text:stripFM(cur().body)})">Copy</button>'
         +'<button class="btn" onclick="send(\'cherrytree\')">CherryTree</button>'
         +'<button class="btn mut" onclick="send(\'reveal\')">Folder</button>'
         +'<span class="spring"></span><button class="btn mut" onclick="send(\'quit\')">Quit</button>';

@@ -27,9 +27,12 @@ let DAY = 86400.0
 
 func notes() -> [[String: Any]] {
     return [
-      ["name":"welcome","title":"Welcome","body":"# Welcome\n\n**Cherry** keeps your handovers, commands and checklists one click away — in the menu bar and in Spotlight.\n\n## Try it\n- Click **+** to add a note\n- ⌘-Space → type a note's name to jump straight to it\n\n```bash\nls \"$NAS_NOTES_DIR\"\n```\n\n> Tip: keep things you reuse a lot here, then **Copy** in one click."],
-      ["name":"deploy","title":"Deploy","body":"# Deploy\n\n## Steps\n1. Pull latest\n2. Build & sign\n3. Tag the release\n\n```bash\ngit pull --rebase\n./Scripts/build.sh\ngit tag -a v1.2.0 -m \"release\"\ngit push --tags\n```\n\n- Rollback: `git checkout v1.1.0`"],
-      ["name":"standup","title":"Standup","body":"# Standup\n\n- Shipped clipboard search + favourites\n- Reviewing PR #42\n- Next: standalone editor window"]
+      ["name":"welcome","title":"Welcome","category":"General","tags":["start","howto"],"body":"# Welcome\n\n**Cherry** keeps your handovers, commands and checklists one click away — in the menu bar and in Spotlight.\n\n## Try it\n- Click **+** to add a note\n- Filter by **category**, or search titles, tags & text\n- ⌘-Space → type a note's name to jump straight to it"],
+      ["name":"llm-keys","title":"LLM API keys","category":"AI & LLM","tags":["groq","openai","openrouter"],"body":"# LLM API keys\n\n## Groq\n- Base: `https://api.groq.com/openai/v1`\n- Fast + cheap — default for chat\n\n## OpenAI\n- Base: `https://api.openai.com/v1`"],
+      ["name":"model-routing","title":"Model routing","category":"AI & LLM","tags":["priority","codex","claude"],"body":"# Model routing\n\n1. Local CLIs first\n2. Proxy endpoint\n3. Other providers"],
+      ["name":"posting","title":"Posting webhooks","category":"Social & Posting","tags":["make.com","linkedin","reddit"],"body":"# Posting webhooks\n\nPOST JSON with an `action` field to the webhook to publish to a channel."],
+      ["name":"deploy","title":"Deploy","category":"Infra & Data","tags":["build","release"],"body":"# Deploy\n\n## Steps\n1. Pull latest\n2. Build & sign\n3. Tag the release\n\n```bash\ngit pull --rebase\n./Scripts/build.sh\n```"],
+      ["name":"standup","title":"Standup","category":"General","tags":["notes"],"body":"# Standup\n\n- Shipped category filter + note search\n- Reviewing PR #42\n- Next: standalone editor window"]
     ]
 }
 
@@ -53,7 +56,8 @@ func clips() -> [[String: Any]] {
 // preset -> (view, activeIndex, postJS, height)
 func spec() -> (String, Int, String, CGFloat) {
     switch preset {
-    case "home":   return ("home", 0, "", 470)
+    case "home":   return ("home", 0, "", 560)
+    case "find":   return ("home", 0, "noteFilter='AI & LLM';noteSearch='';route();", 470)
     case "note":   return ("note", 1, "", 560)
     case "clips":  return ("clips", 0, "", 680)
     case "search": return ("clips", 0, "clipSearch='error';var q=document.getElementById('clipq');if(q){q.value='error'};renderClipList();", 470)

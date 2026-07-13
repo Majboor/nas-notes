@@ -9,7 +9,28 @@ let NOTES_DIR: String = {
 let CTD = NOTES_DIR + "/NAS.ctd"
 let CHERRYTREE = "/opt/homebrew/bin/cherrytree"
 
-struct Note { let name: String; let title: String; let body: String }
+struct Note { let name: String; let title: String; let category: String; let tags: [String]; let body: String }
+
+// Parse an optional YAML-ish frontmatter block (--- … ---) at the very top of a note.
+// Returns the category (default "General") and tags. The body is kept intact for round-trip editing;
+// the UI hides the frontmatter when rendering.
+func parseFrontmatter(_ body: String) -> (category: String, tags: [String]) {
+    var category = "General"; var tags: [String] = []
+    let lines = body.components(separatedBy: "\n")
+    guard let first = lines.first, first.trimmingCharacters(in: .whitespaces) == "---" else { return (category, tags) }
+    var i = 1
+    while i < lines.count && lines[i].trimmingCharacters(in: .whitespaces) != "---" {
+        let parts = lines[i].split(separator: ":", maxSplits: 1, omittingEmptySubsequences: false).map(String.init)
+        if parts.count == 2 {
+            let key = parts[0].trimmingCharacters(in: .whitespaces).lowercased()
+            let val = parts[1].trimmingCharacters(in: .whitespaces)
+            if key == "category", !val.isEmpty { category = val }
+            if key == "tags" { tags = val.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty } }
+        }
+        i += 1
+    }
+    return (category, tags)
+}
 
 func loadNotes() -> [Note] {
     let fm = FileManager.default
@@ -23,7 +44,8 @@ func loadNotes() -> [Note] {
             let line = raw.trimmingCharacters(in: .whitespaces)
             if line.hasPrefix("# ") { title = String(line.dropFirst(2)); break }
         }
-        return Note(name: base, title: title, body: body)
+        let (category, tags) = parseFrontmatter(body)
+        return Note(name: base, title: title, category: category, tags: tags, body: body)
     }
     var notes: [Note] = []; var used = Set<String>()
     for base in preferred where files.contains(base + ".md") {
@@ -117,7 +139,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
 
     func render(view: String = "home", active: Int = 0) {
         notes = loadNotes()
-        let items = notes.map { "{name:\(jsonString($0.name)),title:\(jsonString($0.title)),body:\(jsonString($0.body))}" }.joined(separator: ",")
+        let items = notes.map { n in
+            let tagArr = "[" + n.tags.map { jsonString($0) }.joined(separator: ",") + "]"
+            return "{name:\(jsonString(n.name)),title:\(jsonString(n.title)),category:\(jsonString(n.category)),tags:\(tagArr),body:\(jsonString(n.body))}"
+        }.joined(separator: ",")
         let idx = (active >= 0 && active < notes.count) ? active : 0
         let html = htmlTemplate
             .replacingOccurrences(of: "/*__NOTES__*/", with: "[\(items)]")
