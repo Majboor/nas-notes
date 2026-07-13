@@ -3,6 +3,21 @@
 All notable changes to this project are documented here.
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.5.0]
+
+### Added
+- **Name your note when you create it.** The new-note editor now opens with a dedicated
+  **Name** field (focused first) instead of guessing the filename from the first heading.
+- **Markdown formatting toolbar.** Buttons for Heading, **Bold**, *Italic*, bulleted list,
+  quote, inline code and links — so you can format without knowing Markdown. `⌘B` / `⌘I` also work.
+
+### Fixed
+- **Couldn't paste into a note (⌘V did nothing).** A menu-bar (accessory) app has no menu bar,
+  so the standard editing shortcuts never reached the editor. Added a proper **Edit** menu
+  (Cut/Copy/Paste/Select All/Undo/Redo).
+- JS `confirm()` / `alert()` / `prompt()` now show native panels via a `WKUIDelegate` — the
+  delete-note confirmation previously failed silently.
+
 ## [1.4.0]
 
 ### Changed

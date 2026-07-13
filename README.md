@@ -7,7 +7,7 @@
 Markdown notes, Spotlight launchers, CherryTree export, and a clipboard history that
 auto-sorts everything you copy — in ~300 lines of dependency-free Swift.
 
-![version](https://img.shields.io/badge/version-1.4.0-2563eb)
+![version](https://img.shields.io/badge/version-1.5.0-2563eb)
 ![platform](https://img.shields.io/badge/macOS-11%2B-lightgrey?logo=apple)
 ![Swift](https://img.shields.io/badge/Swift-5-f05138?logo=swift&logoColor=white)
 ![license](https://img.shields.io/badge/license-MIT-22c55e)

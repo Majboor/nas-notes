@@ -42,7 +42,7 @@ func jsonString(_ s: String) -> String {
     return str
 }
 
-final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler, NSPopoverDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler, WKUIDelegate, NSPopoverDelegate {
     var statusItem: NSStatusItem!
     let popover = NSPopover()
     var web: WKWebView!
@@ -54,6 +54,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
         NSAppleEventManager.shared().setEventHandler(
             self, andSelector: #selector(handleURLEvent(_:reply:)),
             forEventClass: AEEventClass(kInternetEventClass), andEventID: AEEventID(kAEGetURL))
+        installEditMenu()   // gives the editor ⌘X/⌘C/⌘V/⌘A/⌘Z (menu-bar apps have no menu otherwise)
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         if let b = statusItem.button {
             b.title = "🍒 Cherry"
@@ -62,6 +63,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
         let cfg = WKWebViewConfiguration()
         cfg.userContentController.add(self, name: "bridge")
         web = WKWebView(frame: NSRect(x: 0, y: 0, width: 600, height: 680), configuration: cfg)
+        web.uiDelegate = self   // route JS alert/confirm/prompt to native panels
         let vc = NSViewController(); vc.view = web
         popover.contentViewController = vc
         popover.contentSize = NSSize(width: 600, height: 680)
@@ -70,6 +72,47 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
         // watch the clipboard in the background so history accumulates even when the panel is closed
         clipTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in self?.clips.poll() }
         render()
+    }
+
+    // A menu-bar (accessory) app has no main menu, so standard editing key equivalents
+    // (⌘C/⌘V/⌘X/⌘A/⌘Z) never reach the WKWebView — pasting a link into a note "does nothing".
+    // Installing a minimal Edit menu wires those actions back up through the responder chain.
+    func installEditMenu() {
+        let mainMenu = NSMenu()
+        let editItem = NSMenuItem(); mainMenu.addItem(editItem)
+        let edit = NSMenu(title: "Edit"); editItem.submenu = edit
+        edit.addItem(withTitle: "Undo", action: Selector(("undo:")), keyEquivalent: "z")
+        let redo = edit.addItem(withTitle: "Redo", action: Selector(("redo:")), keyEquivalent: "z")
+        redo.keyEquivalentModifierMask = [.command, .shift]
+        edit.addItem(.separator())
+        edit.addItem(withTitle: "Cut", action: #selector(NSText.cut(_:)), keyEquivalent: "x")
+        edit.addItem(withTitle: "Copy", action: #selector(NSText.copy(_:)), keyEquivalent: "c")
+        edit.addItem(withTitle: "Paste", action: #selector(NSText.paste(_:)), keyEquivalent: "v")
+        edit.addItem(withTitle: "Select All", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
+        NSApp.mainMenu = mainMenu
+    }
+
+    // MARK: WKUIDelegate — native alert/confirm/prompt (WKWebView shows none by default)
+    func webView(_ w: WKWebView, runJavaScriptAlertPanelWithMessage message: String,
+                 initiatedByFrame frame: WKFrameInfo, completionHandler: @escaping () -> Void) {
+        let a = NSAlert(); a.messageText = message; a.addButton(withTitle: "OK")
+        a.runModal(); completionHandler()
+    }
+    func webView(_ w: WKWebView, runJavaScriptConfirmPanelWithMessage message: String,
+                 initiatedByFrame frame: WKFrameInfo, completionHandler: @escaping (Bool) -> Void) {
+        let a = NSAlert(); a.messageText = message
+        a.addButton(withTitle: "OK"); a.addButton(withTitle: "Cancel")
+        completionHandler(a.runModal() == .alertFirstButtonReturn)
+    }
+    func webView(_ w: WKWebView, runJavaScriptTextInputPanelWithPrompt prompt: String,
+                 defaultText: String?, initiatedByFrame frame: WKFrameInfo,
+                 completionHandler: @escaping (String?) -> Void) {
+        let a = NSAlert(); a.messageText = prompt
+        a.addButton(withTitle: "OK"); a.addButton(withTitle: "Cancel")
+        let tf = NSTextField(frame: NSRect(x: 0, y: 0, width: 240, height: 24))
+        tf.stringValue = defaultText ?? ""; a.accessoryView = tf
+        a.window.initialFirstResponder = tf
+        completionHandler(a.runModal() == .alertFirstButtonReturn ? tf.stringValue : nil)
     }
 
     func render(view: String = "home", active: Int = 0) {
