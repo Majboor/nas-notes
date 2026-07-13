@@ -47,7 +47,8 @@ let htmlTemplate = #"""
   .row .cat{font-size:10px;font-weight:600;color:var(--muted);background:var(--code-bg);border:.5px solid var(--line);
     padding:2px 8px;border-radius:999px;flex:0 0 auto;white-space:nowrap}
   .row .tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}
-  .row .tag{font-size:10px;color:var(--accent);background:var(--code-bg);padding:1px 6px;border-radius:5px;white-space:nowrap}
+  .row .tag{font-size:10px;color:var(--accent);background:var(--code-bg);padding:1px 6px;border-radius:5px;white-space:nowrap;border:.5px solid transparent}
+  .cdot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:5px;vertical-align:middle}
   .chips.ntop{position:sticky;top:0;background:var(--panel);z-index:2;border-bottom:.5px solid var(--line);padding:8px 12px}
   .chip .cc{opacity:.65;font-weight:700;font-size:10px;margin-left:2px}
   .chip.active .cc{opacity:.85}
@@ -341,6 +342,16 @@ let htmlTemplate = #"""
   }
 
   // ---------- notes home list (category + text search) ----------
+  // Stable per-category color: fixed hues for the known categories, hashed palette for new ones.
+  const CAT_COLORS={'AI & LLM':'#a855f7','Social & Posting':'#0a72ff','Infra & Data':'#0ea5a5',
+    'Servers & SSH':'#e0873a','Reference':'#7c7cff','General':'#7d8797'};
+  const CAT_PALETTE=['#a855f7','#0a72ff','#0ea5a5','#e0873a','#e0384e','#22a06b','#7c7cff','#d4a017'];
+  function catColor(c){
+    if(!c) c='General';
+    if(CAT_COLORS[c]) return CAT_COLORS[c];
+    let h=0; for(let i=0;i<c.length;i++){ h=(h*31+c.charCodeAt(i))>>>0; }
+    return CAT_PALETTE[h%CAT_PALETTE.length];
+  }
   function noteMatches(n){
     const q=noteSearch.trim().toLowerCase(); if(!q) return true;
     const hay=((n.title||'')+' '+(n.category||'')+' '+((n.tags||[]).join(' '))+' '+stripFM(n.body||'')).toLowerCase();
@@ -351,11 +362,12 @@ let htmlTemplate = #"""
     const rows=NOTES.map(function(n,idx){ return {n:n,idx:idx}; })
       .filter(function(o){ return noteFilter==='All' || (o.n.category||'General')===noteFilter; })
       .filter(function(o){ return noteMatches(o.n); })
-      .map(function(o){ const n=o.n;
-        const tags=(n.tags&&n.tags.length)?'<div class="tags">'+n.tags.slice(0,4).map(function(t){return '<span class="tag">'+escHtml(t)+'</span>';}).join('')+'</div>':'';
-        return '<div class="row" onclick="openNote('+o.idx+')"><div class="ic">'+(n.name==='email'?'✉️':'🗄️')+'</div>'
+      .map(function(o){ const n=o.n; const col=catColor(n.category||'General');
+        const tags=(n.tags&&n.tags.length)?'<div class="tags">'+n.tags.slice(0,4).map(function(t){return '<span class="tag" style="color:'+col+';border-color:'+col+'40">'+escHtml(t)+'</span>';}).join('')+'</div>':'';
+        const pill='<div class="cat" style="color:'+col+';border-color:'+col+'66">'+escHtml(n.category||'General')+'</div>';
+        return '<div class="row" onclick="openNote('+o.idx+')"><div class="ic" style="color:'+col+'">'+(n.name==='email'?'✉️':'🗄️')+'</div>'
           +'<div class="tx"><div class="tt">'+escHtml(n.title)+'</div><div class="pv">'+escHtml(firstText(n.body))+'</div>'+tags+'</div>'
-          +((noteFilter==='All'&&!noteSearch)?'<div class="cat">'+escHtml(n.category||'General')+'</div>':'')
+          +((noteFilter==='All'&&!noteSearch)?pill:'')
           +'<div class="chev">›</div></div>';
       }).join('');
     cont.innerHTML = rows || '<div class="empty">'+(noteSearch?'No notes match “'+escHtml(noteSearch)+'”.':'Nothing in “'+escHtml(noteFilter)+'”.')+'</div>';
@@ -374,8 +386,14 @@ let htmlTemplate = #"""
         NOTES.forEach(function(n){ const c=(n.category||'General'); if(cats.indexOf(c)<0) cats.push(c); });
         if(cats.indexOf(noteFilter)<0) noteFilter='All';
         window.__cats=cats;
-        const chips=cats.map(function(c,i){ const cnt=(c==='All')?NOTES.length:NOTES.filter(function(n){return (n.category||'General')===c;}).length;
-          return '<div class="chip'+(noteFilter===c?' active':'')+'" onclick="noteFilter=window.__cats['+i+'];noteSearch=\'\';route()">'+escHtml(c)+' <span class="cc">'+cnt+'</span></div>'; }).join('');
+        const chips=cats.map(function(c,i){
+          const cnt=(c==='All')?NOTES.length:NOTES.filter(function(n){return (n.category||'General')===c;}).length;
+          const on=(noteFilter===c), isAll=(c==='All'), col=catColor(c);
+          let style='', dot='';
+          if(!isAll){ if(on){ style=' style="background:'+col+';border-color:'+col+';color:#fff"'; }
+                      else { style=' style="border-color:'+col+'66"'; dot='<span class="cdot" style="background:'+col+'"></span>'; } }
+          return '<div class="chip'+(on?' active':'')+'"'+style+' onclick="noteFilter=window.__cats['+i+'];noteSearch=\'\';route()">'
+            +dot+escHtml(c)+' <span class="cc">'+cnt+'</span></div>'; }).join('');
         appEl().innerHTML='<div class="chips ntop">'+chips+'</div>'
           +'<input class="search" id="noteq" type="search" placeholder="Search notes — title, tag, text…" '
           +'oninput="noteSearch=this.value;renderNoteList()" value="'+escHtml(noteSearch)+'">'
